@@ -1,0 +1,32 @@
+This starts out as a test of a concept to eventually serve the applications from
+lua. The server is modelled after the standard idea of a normal select based
+server. Overtime it probably wont be converted to more sophisticated concepts
+such as kpoll, /dev/poll etc, becuase we just don't need the power. Since the
+main purpose is to serve lua applications we will most likely run out of steam
+before we run out file descriptors. Also please note that it is Linux only at
+first.
+
+Basic ideas it is modelled around
+ - organize the busy and free connection structs in linked lists for easy
+   flexible access
+ - instead of working with fixed string of maximum length, we run on excatly one
+   input buffer so we minimize allocations. Crucial information will be
+   organized by pointers to null terminated strings in the input buffers. That's
+   either a good idea or stupid (because error prone and hard to manage). I
+   wanna have at least a shot at it.
+
+
+Compiling:
+----------
+Check out the future. The main build system is based on clang, the new C
+frontend to LLVM. Much better error messages make it all worthwile.
+
+Plans:
+ - organize busy connection in a double linked list for more efficient access
+
+
+
+
+
+
+# vim: ts=4 sw=4 st=4 sta tw=80
