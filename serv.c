@@ -15,7 +15,7 @@
 #define BACK_LOG                 5
 
 #define MAX_REQUEST_LENGTH       256
-#define MAX_READ_LENGTH          8000
+#define MAX_READ_LENGTH          94
 #define BLOCK_SIZE               4096
 #define RECV_BUFF_LENGTH         8196
 
@@ -224,7 +224,7 @@ static void
 handle_new_conn(int listen_sd)
 {
 #if DEBUG_VERBOSE == 1
-	printf("starthandling  NEW connection");
+	printf("starthandling  NEW connection\n");
 #endif
 	struct sockaddr_in their_addr;
 	socklen_t tp = sizeof(struct sockaddr_in);
@@ -278,49 +278,56 @@ read_request( struct cn_strct *cn )
 	 * reset the buffer pointer to the end of the read material and append at
 	 * next read
 	 */
-	char *tp, *next;
-	int   num_recv;
-	printf("%s", "Started to read request\n");
+	char *next;
+	int   cnt=0, num_recv;
 
 	/* For now assume that RECV_BUFF_LENGTH is enough for one read */
 	num_recv = recv(
 		cn->net_socket,
 		cn->recv_buf,
-		RECV_BUFF_LENGTH - cn->received_bytes,
+		//RECV_BUFF_LENGTH - cn->received_bytes,
+		MAX_READ_LENGTH,
 		0
 	);
 
+	// sanity check
 	if (num_recv <= 0) {
 		if (num_recv < 0) /* really dead? */
 			remove_conn_from_list(cn);
 		return;
 	}
-	printf("We received %d byte of data\n", num_recv);
-	printf("%s\n", cn->recv_buf);
 
-	next = tp = cn->recv_buf;
+	// set the read pointer to where we left off
+	next = cn->recv_buf_head + cn->received_bytes;
+
+	// adjust buffer
+	cn->received_bytes += num_recv;
+	cn->recv_buf = cn->recv_buf_head + cn->received_bytes;
+
+	// null terminate the current buffer
+	cn->recv_buf_head[cn->received_bytes] = '\0';
+
+#if DEBUG_VERBOSE==1
+	printf("%s\n", cn->recv_buf_head);
+	printf("%c --- %d\n\n\n", cn->recv_buf_head[cn->received_bytes-1], cn->received_bytes);
+#endif
 
 	/* count key elements */
 	while (*next != '\0') {
+		//cnt++;
+		printf("COUNT: %c --- %d\n", *next, cnt++);
 		/* Stop once the head is read */
 		if (*next == '\r' || *next == '\n') {
+			printf("COUNT: %d\n", cnt);
 			//cn->filehandle = open(cn->dirname, flags);
 			//cn->filehandle = open("./forumbaum.html", flags);
-			cn->state = REQSTATE_SEND_HEAD;
-			return;
+			//cn->state = REQSTATE_SEND_HEAD;
+			//close(cn->net_socket);
+		//	return;
 		}
 
-		while (*next != '\r' && *next != '\n' && *next != '\0') 
+		//while (*next != '\r' && *next != '\n' && *next != '\0') 
 			next++;
-
-		if (*next == '\r') {
-			*next = '\0';
-			next += 2;
-		}
-		else if (*next == '\n')
-			*next++ = '\0';
-
-		tp = next;
 	}
 }
 
