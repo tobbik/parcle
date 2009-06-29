@@ -23,6 +23,12 @@ frontend to LLVM. Much better error messages make it all worthwile.
 
 Plans:
  - organize busy connection in a double linked list for more efficient access
+ - make the building possible with GNU gcc/ provide alternative Makefile
+ - have lua included in the build, so that users don't have to rely on
+   systemwide installation, which is always a hassle on production environment
+ - there shall be a command line tool available, allowing to execute lua
+   functions in the application part as that is very handy for development and
+   debugging
 
 
 
