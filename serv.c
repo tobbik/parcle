@@ -50,7 +50,6 @@ struct cn_strct
 	char               *recv_buf;
 	char               *recv_buf_head;
 	int                 received_bytes;
-
 };
 
 /* global variables */
@@ -112,10 +111,11 @@ main(int argc, char *argv[])
 		/* Adding connection to the SocketSets based on state */
 		while (tp != NULL) {
 
-			if (tp->state == REQSTATE_READ_HEAD) {
+			if (REQSTATE_READ_HEAD == tp->state) {
 				FD_SET(tp->net_socket, &rfds);
-				if (tp->net_socket > rnum)
-					rnum = tp->net_socket;
+				//if (tp->net_socket > rnum)
+				//	rnum = tp->net_socket;
+				rnum = (tp->net_socket > rnum) ? tp->net_socket : rnum;
 			}
 
 			tp = tp->next;
@@ -125,7 +125,7 @@ main(int argc, char *argv[])
 #endif
 
 		readsocks = select(
-			wnum > rnum ? wnum+1 : rnum+1,
+			(wnum > rnum) ? wnum+1 : rnum+1,
 			rnum != -1 ? &rfds : NULL,
 			wnum != -1 ? &wfds : NULL,
 			(fd_set *) 0,
