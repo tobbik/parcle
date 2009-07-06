@@ -38,18 +38,30 @@ enum req_types
 	REQTYPE_POST
 };
 
+enum http_version
+{
+	HTTP_09,
+	HTTP_10,
+	HTTP_11
+};
+
 /* contain all metadata regarding one connection */
 struct cn_strct
 {
-	struct  cn_strct   *next;
-	enum    req_states  state;
-	enum    req_types   reqtype;
-	int                 net_socket;
+	struct  cn_strct     *next;
+	enum    req_states    state;
+	int                   net_socket;
 
 	/* incoming buffer */
-	char               *recv_buf;
-	char               *recv_buf_head;
-	int                 received_bytes;
+	char                 *recv_buf;
+	char                 *recv_buf_head;
+	int                   received_bytes;
+	/* inc buffer state */
+	int                   line_count;
+	/* head information */
+	enum    req_types     req_type;
+	char                 *url;
+	enum    http_version *http_prot;
 };
 
 /* global variables */
@@ -60,11 +72,14 @@ const char * const   _Server_version = "testserver/poc";
 /* forward declaration of some connection helpers */
 static int  create_listener(int port);
 static void handle_new_conn(int listenfd);
-static void add_conns_to_list(int sd, char *ip);
+static void add_conn_to_list(int sd, char *ip);
 static void remove_conn_from_list(struct cn_strct *cn);
 
 /* Forward declaration of some content helpers*/
 static void read_request( struct cn_strct *cn );
+static void parse_first_line( struct cn_strct *cn );
+static enum req_types get_http_method( char *buf );
+static enum http_version get_http_version( char *buf );
 
 int
 main(int argc, char *argv[])
@@ -215,9 +230,10 @@ add_conn_to_list(int sd, char *ip)
 	tp->net_socket = sd;
 
 	/* Pre/Re-set initial variables */
-	tp->state   = REQSTATE_READ_HEAD;
-	tp->reqtype = REQTYPE_GET;
+	tp->state    = REQSTATE_READ_HEAD;
+	tp->req_type = REQTYPE_GET;
 	tp->received_bytes  = 0;
+	tp->line_count  = 0;
 }
 
 static void
@@ -309,7 +325,10 @@ read_request( struct cn_strct *cn )
 
 #if DEBUG_VERBOSE==1
 	printf("%s\n", cn->recv_buf_head);
-	printf("%c --- %d\n\n\n", cn->recv_buf_head[cn->received_bytes-1], cn->received_bytes);
+	printf("%c --- %d\n\n\n",
+		cn->recv_buf_head[cn->received_bytes-1],
+		cn->received_bytes
+	);
 #endif
 
 	/* count key elements */
@@ -331,4 +350,21 @@ read_request( struct cn_strct *cn )
 	}
 }
 
+static enum req_types
+get_http_method( char *req )
+{
+	if (0 == strncasecmp(req, "GET",  3)) { return REQTYPE_GET; }
+	if (0 == strncasecmp(req, "HEAD",  4)) { return REQTYPE_HEAD; }
+	if (0 == strncasecmp(req, "POST",  4)) { return REQTYPE_POST; }
+	return -1;
+}
+
+static enum http_version
+get_http_version( char *req)
+{
+	if (!strncasecmp("HTTP/0.9", req, 8)) return HTTP_09;
+	if (!strncasecmp("HTTP/1.0", req, 8)) return HTTP_10;
+	if (!strncasecmp("HTTP/1.1", req, 8)) return HTTP_11;
+	return -1;
+}
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
