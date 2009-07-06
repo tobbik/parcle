@@ -21,7 +21,7 @@
 
 #define INITIAL_CONNS            5
 #define HTTP_PORT                8000
-#define DEBUG_VERBOSE            1
+#define DEBUG_VERBOSE            0
 
 enum req_states
 {
@@ -295,7 +295,7 @@ read_request( struct cn_strct *cn )
 	 * next read
 	 */
 	char *next;
-	int   cnt=0, num_recv;
+	int   num_recv;
 
 	/* For now assume that RECV_BUFF_LENGTH is enough for one read */
 	num_recv = recv(
@@ -331,23 +331,65 @@ read_request( struct cn_strct *cn )
 	);
 #endif
 
-	/* count key elements */
-	while (*next != '\0') {
-		//cnt++;
-		printf("COUNT: %c --- %d\n", *next, cnt++);
-		/* Stop once the head is read */
-		if (*next == '\r' || *next == '\n') {
-			printf("COUNT: %d\n", cnt);
-			//cn->filehandle = open(cn->dirname, flags);
-			//cn->filehandle = open("./forumbaum.html", flags);
-			//cn->state = REQSTATE_SEND_HEAD;
-			//close(cn->net_socket);
-		//	return;
+	/* a naive little line parser */
+	while ( (*next != '\0') ) {
+		switch (*next) {
+			case '\r':
+				if (*(next+1)=='\n' ) {
+					cn->line_count++;
+					if (1 == cn->line_count) {
+						parse_first_line(cn);
+					}
+					if (*(next+2)=='\r' && *(next+3)=='\n'  ) {
+						printf("LINE COUNT: %d\n", cn->line_count);
+						// proceed next stage
+						cn->state = REQSTATE_SEND_HEAD;
+						// debugging close the socket
+						close(cn->net_socket);
+					}
+				}
+				break;
+			default:
+				break;
 		}
-
-		//while (*next != '\r' && *next != '\n' && *next != '\0') 
-			next++;
+		next++;
 	}
+	printf("METHOD: %d\n", cn->req_type);
+	printf("URL: %s\n", cn->url);
+	printf("PROTOCOL: %d\n", cn->http_prot);
+}
+
+void
+parse_first_line( struct cn_strct *cn )
+{
+	char *next = cn->recv_buf_head;
+	char *cur_chunk = cn->recv_buf_head;
+	short spc_cnt = 0;
+	while ( (*next != '\r') ) {
+		switch (*next) {
+			case ' ':
+				if (0 == spc_cnt++) {
+					printf("method: %s\n", cur_chunk);
+					cn->req_type = get_http_method( cur_chunk);
+					cur_chunk = next+1;
+				}
+				else if( 2==spc_cnt) {
+					printf("url: %s\n", cur_chunk);
+					cn->url = cur_chunk;
+					cur_chunk = next+1;
+				}
+				break;
+			case '&':
+				break;
+
+			default:
+				// keep going
+				break;
+		}
+		next++;
+	}
+	cn->http_prot = get_http_version( cur_chunk );
+	printf("protocol: %s\n", cur_chunk);
 }
 
 static enum req_types
