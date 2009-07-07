@@ -354,9 +354,11 @@ read_request( struct cn_strct *cn )
 		}
 		next++;
 	}
-	printf("METHOD: %d\n", cn->req_type);
-	printf("URL: %s\n", cn->url);
-	printf("PROTOCOL: %d\n", cn->http_prot);
+	if (REQSTATE_SEND_HEAD == cn->state) {
+		printf("METHOD: %d\n", cn->req_type);
+		printf("URL: %s\n", cn->url);
+		printf("PROTOCOL: %d\n", cn->http_prot);
+	}
 }
 
 void
