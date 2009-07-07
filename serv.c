@@ -371,15 +371,14 @@ parse_first_line( struct cn_strct *cn )
 		switch (*next) {
 			case ' ':
 				if (0 == spc_cnt++) {
-					printf("method: %s\n", cur_chunk);
 					cn->req_type = get_http_method( cur_chunk);
 					cur_chunk = next+1;
 				}
 				else if( 2==spc_cnt) {
-					printf("url: %s\n", cur_chunk);
 					cn->url = cur_chunk;
 					cur_chunk = next+1;
 				}
+				*next = '\0';
 				break;
 			case '&':
 				break;
