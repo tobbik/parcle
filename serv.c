@@ -61,6 +61,7 @@ struct cn_strct
 	/* head information */
 	enum    req_types     req_type;
 	char                 *url;
+	char                 *pay_load;         // either GET or POST data
 	enum    http_version  http_prot;
 };
 
@@ -234,6 +235,7 @@ add_conn_to_list(int sd, char *ip)
 	tp->req_type = REQTYPE_GET;
 	tp->received_bytes  = 0;
 	tp->line_count  = 0;
+	tp->pay_load  = '\0';
 }
 
 static void
@@ -358,6 +360,7 @@ read_request( struct cn_strct *cn )
 		printf("METHOD: %d\n", cn->req_type);
 		printf("URL: %s\n", cn->url);
 		printf("PROTOCOL: %d\n", cn->http_prot);
+		printf("PAYLOAD: %s\n", cn->pay_load);
 	}
 }
 
@@ -365,22 +368,23 @@ void
 parse_first_line( struct cn_strct *cn )
 {
 	char *next = cn->recv_buf_head;
-	char *cur_chunk = cn->recv_buf_head;
 	short spc_cnt = 0;
 	while ( (*next != '\r') ) {
 		switch (*next) {
 			case ' ':
-				if (0 == spc_cnt++) {
-					cn->req_type = get_http_method( cur_chunk);
-					cur_chunk = next+1;
+				spc_cnt++;
+				if (1 == spc_cnt) {
+					cn->req_type = get_http_method( cn->recv_buf_head );
+					cn->url = next+1;
 				}
-				else if( 2==spc_cnt) {
-					cn->url = cur_chunk;
-					cur_chunk = next+1;
+				else if(2 == spc_cnt) {
+					cn->http_prot = get_http_version( next+1 );
 				}
 				*next = '\0';
 				break;
-			case '&':
+			case '?':
+				cn->pay_load = next+1;
+				*next = '\0';
 				break;
 
 			default:
@@ -389,7 +393,6 @@ parse_first_line( struct cn_strct *cn )
 		}
 		next++;
 	}
-	cn->http_prot = get_http_version( cur_chunk );
 }
 
 static enum req_types
