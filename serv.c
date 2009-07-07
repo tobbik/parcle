@@ -69,6 +69,7 @@ struct cn_strct
 struct cn_strct     *_Free_conns;
 struct cn_strct     *_Busy_conns;
 const char * const   _Server_version = "testserver/poc";
+int                  master_sock;      /* listening master socket ( global for cleanup ) */
 
 /* forward declaration of some connection helpers */
 static int  create_listener(int port);
@@ -82,13 +83,50 @@ static void parse_first_line( struct cn_strct *cn );
 static enum req_types get_http_method( char *buf );
 static enum http_version get_http_version( char *buf );
 
+/* clean up after ourselves */
+static void
+clean_on_quit(int sig)
+{
+	struct cn_strct *tp;
+
+	while (NULL != _Free_conns) {
+		tp = _Free_conns->next;
+		free(_Free_conns->recv_buf_head);
+		free(_Free_conns);
+		_Free_conns = tp;
+	}
+
+	while (NULL != _Busy_conns) {
+		tp = _Busy_conns->next;
+		free(_Busy_conns->recv_buf_head);
+		close(_Busy_conns->net_socket);
+		free(_Busy_conns);
+		_Busy_conns = tp;
+	}
+	close(master_sock);
+	printf("Graceful exit done after signal: %d\n", sig);
+
+	exit(0);
+}
+
+static void
+die(int sig)
+{
+	printf("Server stopped, caught signal: %d\n", sig);
+	exit(0);
+}
+
 int
 main(int argc, char *argv[])
 {
 	fd_set              rfds, wfds;
 	struct cn_strct    *tp, *to;
-	int                 master_sock, rnum, wnum, readsocks;
+	int                 rnum, wnum, readsocks;
 	int                 i;
+
+	signal(SIGQUIT, die);
+	signal(SIGTERM, die);
+	signal(SIGINT, clean_on_quit);
 
 	for (i = 0; i < INITIAL_CONNS; i++) {
 		tp = _Free_conns;
@@ -189,7 +227,11 @@ create_listener(int port)
 	my_addr.sin_port        = htons((short)port);
 	my_addr.sin_addr.s_addr = INADDR_ANY;
 
-	setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &tmp_s, sizeof(int));
+	if (0 > setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &tmp_s, sizeof(int)) ) {
+		printf("Failed to reuse the listener socket\n");
+		close(sd);
+		return -1;
+	}
 	if (bind(sd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) == -1) {
 		close(sd);
 		return -1;
