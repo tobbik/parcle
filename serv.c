@@ -61,7 +61,7 @@ struct cn_strct
 	/* head information */
 	enum    req_types     req_type;
 	char                 *url;
-	enum    http_version *http_prot;
+	enum    http_version  http_prot;
 };
 
 /* global variables */
@@ -273,7 +273,7 @@ remove_conn_from_list(struct cn_strct *cn)
 		}
 	}
 
-	if (shouldret) 
+	if (shouldret)
 		return;
 
 	/* If we did, add it to the free list */
