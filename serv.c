@@ -390,24 +390,23 @@ parse_first_line( struct cn_strct *cn )
 		next++;
 	}
 	cn->http_prot = get_http_version( cur_chunk );
-	printf("protocol: %s\n", cur_chunk);
 }
 
 static enum req_types
 get_http_method( char *req )
 {
-	if (0 == strncasecmp(req, "GET",  3)) { return REQTYPE_GET; }
+	if (0 == strncasecmp(req, "GET",   3)) { return REQTYPE_GET; }
 	if (0 == strncasecmp(req, "HEAD",  4)) { return REQTYPE_HEAD; }
 	if (0 == strncasecmp(req, "POST",  4)) { return REQTYPE_POST; }
 	return -1;
 }
 
 static enum http_version
-get_http_version( char *req)
+get_http_version( char *req )
 {
-	if (!strncasecmp("HTTP/0.9", req, 8)) return HTTP_09;
-	if (!strncasecmp("HTTP/1.0", req, 8)) return HTTP_10;
-	if (!strncasecmp("HTTP/1.1", req, 8)) return HTTP_11;
+	if (0 == strncasecmp(req, "HTTP/0.9", 8)) { return HTTP_09; }
+	if (0 == strncasecmp(req, "HTTP/1.0", 8)) { return HTTP_10; }
+	if (0 == strncasecmp(req, "HTTP/1.1", 8)) { return HTTP_11; }
 	return -1;
 }
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
