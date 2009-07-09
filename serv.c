@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 /* A few constants */
 #define BACK_LOG                 5
@@ -21,6 +22,7 @@
 
 #define INITIAL_CONNS            5
 #define HTTP_PORT                8000
+#define HTTP_VERSION             "HTTP1.1"
 #define DEBUG_VERBOSE            0
 
 enum req_states
@@ -51,6 +53,7 @@ struct cn_strct
 	struct  cn_strct     *next;
 	enum    req_states    state;
 	int                   net_socket;
+	int                   file_desc;
 
 	/* incoming buffer */
 	char                 *recv_buf;
@@ -79,6 +82,7 @@ static void remove_conn_from_list(struct cn_strct *cn);
 
 /* Forward declaration of some content helpers*/
 static void read_request( struct cn_strct *cn );
+static void write_head( struct cn_strct *cn );
 static void parse_first_line( struct cn_strct *cn );
 static enum req_types get_http_method( char *buf );
 static enum http_version get_http_version( char *buf );
@@ -167,11 +171,12 @@ main(int argc, char *argv[])
 
 			if (REQSTATE_READ_HEAD == tp->state) {
 				FD_SET(tp->net_socket, &rfds);
-				//if (tp->net_socket > rnum)
-				//	rnum = tp->net_socket;
 				rnum = (tp->net_socket > rnum) ? tp->net_socket : rnum;
 			}
-
+			if (REQSTATE_SEND_HEAD == tp->state) {
+				FD_SET(tp->net_socket, &wfds);
+				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
+			}
 			tp = tp->next;
 		}
 #if DEBUG_VERBOSE == 1
@@ -199,11 +204,17 @@ main(int argc, char *argv[])
 			to = tp;
 			tp = tp->next;
 
-			if (to->state == REQSTATE_READ_HEAD &&
-						FD_ISSET(to->net_socket, &rfds)) {
+			if (REQSTATE_READ_HEAD == to->state &&
+			  FD_ISSET(to->net_socket, &rfds)) {
 				readsocks--;
-				printf("WANNA READ HEAD\n");
+				printf("WANNA RECV HEAD\n");
 				read_request(to);
+			}
+			if (REQSTATE_SEND_HEAD == to->state &&
+			  FD_ISSET(to->net_socket, &wfds)) {
+				readsocks--;
+				printf("WANNA SEND HEAD\n");
+				write_head(to);
 			}
 
 		}
@@ -331,13 +342,13 @@ remove_conn_from_list(struct cn_strct *cn)
 }
 
 
+/* Here is the deal, we read as much as we can into the empty buffer, then
+ * reset the buffer pointer to the end of the read material and append at
+ * next read
+ */
 void
 read_request( struct cn_strct *cn )
 {
-	/* Here is the deal, we read as much as we can into the empty buffer, then
-	 * reset the buffer pointer to the end of the read material and append at
-	 * next read
-	 */
 	char *next;
 	int   num_recv;
 
@@ -388,8 +399,6 @@ read_request( struct cn_strct *cn )
 						printf("LINE COUNT: %d\n", cn->line_count);
 						// proceed next stage
 						cn->state = REQSTATE_SEND_HEAD;
-						// debugging close the socket
-						close(cn->net_socket);
 					}
 				}
 				break;
@@ -404,6 +413,46 @@ read_request( struct cn_strct *cn )
 		printf("PROTOCOL: %d\n", cn->http_prot);
 		printf("PAYLOAD: %s\n", cn->pay_load);
 	}
+}
+
+
+/*
+ */
+void
+write_head (struct cn_strct *cn)
+{
+	char buf[RECV_BUFF_LENGTH];
+	struct stat stbuf;
+	time_t now = time(NULL);
+	char date[32];
+	int file_exists;
+
+	file_exists = stat("serv.c", &stbuf);
+
+
+	if (file_exists == -1)
+	{
+		//send_error(cn, 404);
+		printf("Sorry dude, didn't finde the file");
+		return;
+	}
+
+	strcpy(date, ctime(&now));
+
+	cn->file_desc = open("serv.c", O_RDONLY);
+
+	snprintf(buf, sizeof(buf),
+		HTTP_VERSION" 200 OK\nServer: %s\n"
+		"Content-Type: %s\nContent-Length: %ld\n"
+		"Date: %sLast-Modified: %s\n", _Server_version,
+		"text/x-c", (long) stbuf.st_size,
+		date, ctime(&stbuf.st_mtime)
+	); /* ctime() has a \n on the end */
+
+	send(cn->net_socket, buf, strlen(buf), 0);
+	cn->state = REQSTATE_BUFF_FILE;
+	// debugging close the socket
+	close(cn->net_socket);
 }
 
 void
