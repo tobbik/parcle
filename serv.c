@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <time.h>
 
 /* A few constants */
 #define BACK_LOG                 5
