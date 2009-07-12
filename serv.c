@@ -51,7 +51,7 @@ enum http_version
 struct cn_strct
 {
 	struct  cn_strct     *next;
-	enum    req_states    state;
+	enum    req_states    req_state;
 	int                   net_socket;
 	int                   file_desc;
 
@@ -169,11 +169,11 @@ main(int argc, char *argv[])
 		/* Adding connection to the SocketSets based on state */
 		while (tp != NULL) {
 
-			if (REQSTATE_READ_HEAD == tp->state) {
+			if (REQSTATE_READ_HEAD == tp->req_state) {
 				FD_SET(tp->net_socket, &rfds);
 				rnum = (tp->net_socket > rnum) ? tp->net_socket : rnum;
 			}
-			if (REQSTATE_SEND_HEAD == tp->state) {
+			if (REQSTATE_SEND_HEAD == tp->req_state) {
 				FD_SET(tp->net_socket, &wfds);
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
@@ -204,13 +204,13 @@ main(int argc, char *argv[])
 			to = tp;
 			tp = tp->next;
 
-			if (REQSTATE_READ_HEAD == to->state &&
+			if (REQSTATE_READ_HEAD == to->req_state &&
 			  FD_ISSET(to->net_socket, &rfds)) {
 				readsocks--;
 				printf("WANNA RECV HEAD\n");
 				read_request(to);
 			}
-			if (REQSTATE_SEND_HEAD == to->state &&
+			if (REQSTATE_SEND_HEAD == to->req_state &&
 			  FD_ISSET(to->net_socket, &wfds)) {
 				readsocks--;
 				printf("WANNA SEND HEAD\n");
@@ -284,8 +284,8 @@ add_conn_to_list(int sd, char *ip)
 	tp->net_socket = sd;
 
 	/* Pre/Re-set initial variables */
-	tp->state    = REQSTATE_READ_HEAD;
-	tp->req_type = REQTYPE_GET;
+	tp->req_state = REQSTATE_READ_HEAD;
+	tp->req_type  = REQTYPE_GET;
 	tp->received_bytes  = 0;
 	tp->line_count  = 0;
 	tp->pay_load  = '\0';
@@ -398,7 +398,7 @@ read_request( struct cn_strct *cn )
 					if (*(next+2)=='\r' && *(next+3)=='\n'  ) {
 						printf("LINE COUNT: %d\n", cn->line_count);
 						// proceed next stage
-						cn->state = REQSTATE_SEND_HEAD;
+						cn->req_state = REQSTATE_SEND_HEAD;
 					}
 				}
 				break;
@@ -407,7 +407,7 @@ read_request( struct cn_strct *cn )
 		}
 		next++;
 	}
-	if (REQSTATE_SEND_HEAD == cn->state) {
+	if (REQSTATE_SEND_HEAD == cn->req_state) {
 		printf("METHOD: %d\n", cn->req_type);
 		printf("URL: %s\n", cn->url);
 		printf("PROTOCOL: %d\n", cn->http_prot);
@@ -450,7 +450,7 @@ write_head (struct cn_strct *cn)
 	); /* ctime() has a \n on the end */
 
 	send(cn->net_socket, buf, strlen(buf), 0);
-	cn->state = REQSTATE_BUFF_FILE;
+	cn->req_state = REQSTATE_BUFF_FILE;
 	// debugging close the socket
 	close(cn->net_socket);
 }
