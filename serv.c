@@ -59,7 +59,7 @@ struct cn_strct
 	/* incoming buffer */
 	char                 *recv_buf;
 	char                 *recv_buf_head;
-	int                   received_bytes;
+	int                   processed_bytes;
 	/* inc buffer state */
 	int                   line_count;
 	/* head information */
@@ -287,7 +287,7 @@ add_conn_to_list(int sd, char *ip)
 	/* Pre/Re-set initial variables */
 	tp->req_state = REQSTATE_READ_HEAD;
 	tp->req_type  = REQTYPE_GET;
-	tp->received_bytes  = 0;
+	tp->processed_bytes  = 0;
 	tp->line_count  = 0;
 	tp->pay_load  = '\0';
 }
@@ -357,7 +357,7 @@ read_request( struct cn_strct *cn )
 	num_recv = recv(
 		cn->net_socket,
 		cn->recv_buf,
-		//RECV_BUFF_LENGTH - cn->received_bytes,
+		//RECV_BUFF_LENGTH - cn->processed_bytes,
 		MAX_READ_LENGTH,
 		0
 	);
@@ -370,20 +370,20 @@ read_request( struct cn_strct *cn )
 	}
 
 	// set the read pointer to where we left off
-	next = cn->recv_buf_head + cn->received_bytes;
+	next = cn->recv_buf_head + cn->processed_bytes;
 
 	// adjust buffer
-	cn->received_bytes += num_recv;
-	cn->recv_buf = cn->recv_buf_head + cn->received_bytes;
+	cn->processed_bytes += num_recv;
+	cn->recv_buf = cn->recv_buf_head + cn->processed_bytes;
 
 	// null terminate the current buffer
-	cn->recv_buf_head[cn->received_bytes] = '\0';
+	cn->recv_buf_head[cn->processed_bytes] = '\0';
 
 #if DEBUG_VERBOSE==1
 	printf("%s\n", cn->recv_buf_head);
 	printf("%c --- %d\n\n\n",
-		cn->recv_buf_head[cn->received_bytes-1],
-		cn->received_bytes
+		cn->recv_buf_head[cn->processed_bytes-1],
+		cn->processed_bytes
 	);
 #endif
 
