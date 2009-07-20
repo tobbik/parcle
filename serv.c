@@ -57,8 +57,8 @@ struct cn_strct
 	int                   file_desc;
 
 	/* incoming buffer */
-	char                 *recv_buf;
-	char                 *recv_buf_head;
+	char                 *data_buf_head;      /* points to start, always */
+	char                 *data_buf;           /* points to current point of interest */
 	int                   processed_bytes;
 	/* inc buffer state */
 	int                   line_count;
@@ -84,9 +84,12 @@ static void remove_conn_from_list(struct cn_strct *cn);
 /* Forward declaration of some content helpers*/
 static void read_request( struct cn_strct *cn );
 static void write_head( struct cn_strct *cn );
-static void parse_first_line( struct cn_strct *cn );
-static enum req_types get_http_method( char *buf );
-static enum http_version get_http_version( char *buf );
+static void buff_file( struct cn_strct *cn );
+static void send_file( struct cn_strct *cn );
+
+static void               parse_first_line( struct cn_strct *cn );
+static enum req_types     get_http_method( char *buf );
+static enum http_version  get_http_version( char *buf );
 
 /* clean up after ourselves */
 static void
@@ -96,14 +99,14 @@ clean_on_quit(int sig)
 
 	while (NULL != _Free_conns) {
 		tp = _Free_conns->next;
-		free(_Free_conns->recv_buf_head);
+		free(_Free_conns->data_buf_head);
 		free(_Free_conns);
 		_Free_conns = tp;
 	}
 
 	while (NULL != _Busy_conns) {
 		tp = _Busy_conns->next;
-		free(_Busy_conns->recv_buf_head);
+		free(_Busy_conns->data_buf_head);
 		close(_Busy_conns->net_socket);
 		free(_Busy_conns);
 		_Busy_conns = tp;
@@ -136,7 +139,7 @@ main(int argc, char *argv[])
 	for (i = 0; i < INITIAL_CONNS; i++) {
 		tp = _Free_conns;
 		_Free_conns = (struct cn_strct *) calloc(1, sizeof(struct cn_strct));
-		_Free_conns->recv_buf_head =
+		_Free_conns->data_buf_head =
 			(char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
 		_Free_conns->next = tp;
 	}
@@ -175,6 +178,14 @@ main(int argc, char *argv[])
 				rnum = (tp->net_socket > rnum) ? tp->net_socket : rnum;
 			}
 			if (REQSTATE_SEND_HEAD == tp->req_state) {
+				FD_SET(tp->net_socket, &wfds);
+				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
+			}
+			if (REQSTATE_BUFF_FILE == tp->req_state) {
+				FD_SET(tp->file_desc, &rfds);
+				rnum = (tp->file_desc > rnum) ? tp->file_desc : rnum;
+			}
+			if (REQSTATE_SEND_FILE == tp->req_state) {
 				FD_SET(tp->net_socket, &wfds);
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
@@ -217,10 +228,20 @@ main(int argc, char *argv[])
 				printf("WANNA SEND HEAD\n");
 				write_head(to);
 			}
-
+			if (REQSTATE_BUFF_FILE == to->req_state &&
+			  FD_ISSET(to->file_desc, &rfds)) {
+				readsocks--;
+				printf("WANNA BUFF FILE\n");
+				buff_file(to);
+			}
+			if (REQSTATE_SEND_FILE == to->req_state &&
+			  FD_ISSET(to->net_socket, &wfds)) {
+				readsocks--;
+				printf("WANNA SEND FILE\n");
+				send_file(to);
+			}
 		}
 	}
-
 	return 0;
 }
 
@@ -266,7 +287,7 @@ add_conn_to_list(int sd, char *ip)
 	/* pull out connection struct ... or create one */
 	if (NULL == _Free_conns) {
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
-		tp->recv_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
+		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
 	}
 	else {
 		tp = _Free_conns;
@@ -274,10 +295,10 @@ add_conn_to_list(int sd, char *ip)
 		/* TODO: For Later, if we end up reallocing for larger buffers we need
 		 * to keep track of how much we need to null over upon reuse
 		 */
-		memset(tp->recv_buf_head, 0, RECV_BUFF_LENGTH * sizeof(char));
+		memset(tp->data_buf_head, 0, RECV_BUFF_LENGTH * sizeof(char));
 	}
 
-	tp->recv_buf        = tp->recv_buf_head;
+	tp->data_buf        = tp->data_buf_head;
 
 	/* Make it part of the busy connection list */
 	tp->next = _Busy_conns;
@@ -356,7 +377,7 @@ read_request( struct cn_strct *cn )
 	/* For now assume that RECV_BUFF_LENGTH is enough for one read */
 	num_recv = recv(
 		cn->net_socket,
-		cn->recv_buf,
+		cn->data_buf,
 		//RECV_BUFF_LENGTH - cn->processed_bytes,
 		MAX_READ_LENGTH,
 		0
@@ -370,19 +391,19 @@ read_request( struct cn_strct *cn )
 	}
 
 	// set the read pointer to where we left off
-	next = cn->recv_buf_head + cn->processed_bytes;
+	next = cn->data_buf_head + cn->processed_bytes;
 
 	// adjust buffer
 	cn->processed_bytes += num_recv;
-	cn->recv_buf = cn->recv_buf_head + cn->processed_bytes;
+	cn->data_buf = cn->data_buf_head + cn->processed_bytes;
 
 	// null terminate the current buffer
-	cn->recv_buf_head[cn->processed_bytes] = '\0';
+	cn->data_buf_head[cn->processed_bytes] = '\0';
 
 #if DEBUG_VERBOSE==1
-	printf("%s\n", cn->recv_buf_head);
+	printf("%s\n", cn->data_buf_head);
 	printf("%c --- %d\n\n\n",
-		cn->recv_buf_head[cn->processed_bytes-1],
+		cn->data_buf_head[cn->processed_bytes-1],
 		cn->processed_bytes
 	);
 #endif
@@ -452,21 +473,64 @@ write_head (struct cn_strct *cn)
 
 	send(cn->net_socket, buf, strlen(buf), 0);
 	cn->req_state = REQSTATE_BUFF_FILE;
-	// debugging close the socket
-	close(cn->net_socket);
+}
+
+
+void
+buff_file (struct cn_strct *cn)
+{
+	int rv = read(cn->file_desc, cn->data_buf_head, RECV_BUFF_LENGTH);
+	printf("\n\nbuffered:%d\n", rv);
+	cn->data_buf    =    cn->data_buf_head;
+
+	if (rv <= 0) {
+		close(cn->file_desc);
+		cn->file_desc = -1;
+		close(cn->file_desc);
+		remove_conn_from_list(cn);
+		return;
+	}
+
+	cn->processed_bytes = rv;
+	cn->req_state = REQSTATE_SEND_FILE;
 }
 
 void
+send_file (struct cn_strct *cn)
+{
+	int rv = send (cn->net_socket, cn->data_buf,
+		(cn->processed_bytes < 1024) ? cn->processed_bytes:1024, 0);
+
+	printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes);
+	if (rv < 0) {
+		remove_conn_from_list(cn);
+	}
+	else if (rv == cn->processed_bytes) {
+		cn->req_state = REQSTATE_BUFF_FILE;
+	}
+	else if (0 == rv) {
+		/* Do nothing */ 
+	}
+	else {
+		cn->data_buf = cn->data_buf + rv;
+		cn->processed_bytes -= rv;
+	}
+}
+
+
+
+/* parsing helpers */
+void
 parse_first_line( struct cn_strct *cn )
 {
-	char *next = cn->recv_buf_head;
+	char *next = cn->data_buf_head;
 	short spc_cnt = 0;
 	while ( (*next != '\r') ) {
 		switch (*next) {
 			case ' ':
 				spc_cnt++;
 				if (1 == spc_cnt) {
-					cn->req_type = get_http_method( cn->recv_buf_head );
+					cn->req_type = get_http_method( cn->data_buf_head );
 					cn->url = next+1;
 				}
 				else if(2 == spc_cnt) {

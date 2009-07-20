@@ -9,4 +9,4 @@ srv: serv.o
 clean:
 	-rm *.o srv
 
-# vim: ts=4 sw=4 st=4 sta tw=80
+# vim: ts=4 sw=4 st=4 sta tw=80 list
