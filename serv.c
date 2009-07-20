@@ -499,7 +499,7 @@ void
 send_file (struct cn_strct *cn)
 {
 	int rv = send (cn->net_socket, cn->data_buf,
-		(cn->processed_bytes < 1024) ? cn->processed_bytes:1024, 0);
+		cn->processed_bytes, 0);
 
 	printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes);
 	if (rv < 0) {
@@ -509,7 +509,7 @@ send_file (struct cn_strct *cn)
 		cn->req_state = REQSTATE_BUFF_FILE;
 	}
 	else if (0 == rv) {
-		/* Do nothing */ 
+		/* Do nothing */
 	}
 	else {
 		cn->data_buf = cn->data_buf + rv;
