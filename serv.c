@@ -81,15 +81,14 @@ static void handle_new_conn(int listenfd);
 static void add_conn_to_list(int sd, char *ip);
 static void remove_conn_from_list(struct cn_strct *cn);
 
-/* Forward declaration of some content helpers*/
+/* Forward declaration of select's processing helpers */
 static void read_request( struct cn_strct *cn );
 static void write_head( struct cn_strct *cn );
 static void buff_file( struct cn_strct *cn );
 static void send_file( struct cn_strct *cn );
 
+/* Forwad declaration of string parsing methods */
 static void               parse_first_line( struct cn_strct *cn );
-static enum req_types     get_http_method( char *buf );
-static enum http_version  get_http_version( char *buf );
 
 /* clean up after ourselves */
 static void
@@ -244,7 +243,11 @@ main(int argc, char *argv[])
 	}
 	return 0;
 }
-
+/*____ ___  _   _ _   _   _   _ _____ _     ____  _____ ____  ____
+ / ___/ _ \| \ | | \ | | | | | | ____| |   |  _ \| ____|  _ \/ ___|
+| |  | | | |  \| |  \| | | |_| |  _| | |   | |_) |  _| | |_) \___ \
+| |__| |_| | |\  | |\  | |  _  | |___| |___|  __/| |___|  _ < ___) |
+ \____\___/|_| \_|_| \_| |_| |_|_____|_____|_|   |_____|_| \_\____/ */
 // create the master listening socket
 static int
 create_listener(int port)
@@ -363,7 +366,11 @@ remove_conn_from_list(struct cn_strct *cn)
 	}
 }
 
-
+/*___  _____ _     _____ ____ _____   ____  ____   ___   ____
+/ ___|| ____| |   | ____/ ___|_   _| |  _ \|  _ \ / _ \ / ___|
+\___ \|  _| | |   |  _|| |     | |   | |_) | |_) | | | | |
+ ___) | |___| |___| |__| |___  | |   |  __/|  _ <| |_| | |___
+|____/|_____|_____|_____\____| |_|   |_|   |_| \_\\___/ \____| */
 /* Here is the deal, we read as much as we can into the empty buffer, then
  * reset the buffer pointer to the end of the read material and append at
  * next read
@@ -519,53 +526,59 @@ send_file (struct cn_strct *cn)
 
 
 
-/* parsing helpers */
+/*___   _    ____  ____  _____   _   _ _____ _     ____  _____ ____  ____
+|  _ \ / \  |  _ \/ ___|| ____| | | | | ____| |   |  _ \| ____|  _ \/ ___|
+| |_) / _ \ | |_) \___ \|  _|   | |_| |  _| | |   | |_) |  _| | |_) \___ \
+|  __/ ___ \|  _ < ___) | |___  |  _  | |___| |___|  __/| |___|  _ < ___) |
+|_| /_/   \_\_| \_\____/|_____| |_| |_|_____|_____|_|   |_____|_| \_\____/ */
+
+/*
+ * * Isolate "METHOD URL?GET_PARAMS HTTP_VER" from first request line
+ * -count '/' to help the url delimiter, count '?/ to get parser
+ */
 void
 parse_first_line( struct cn_strct *cn )
 {
-	char *next = cn->data_buf_head;
-	short spc_cnt = 0;
+	char          *next  = cn->data_buf_head;
+	unsigned short done_url=0, get_cnt=0, slash_cnt=0;
+	/* METHOD */
+	if (0 == strncasecmp(next, "GET",   3)) { cn->req_type=REQTYPE_GET;  next+=3;}
+	if (0 == strncasecmp(next, "HEAD",  4)) { cn->req_type=REQTYPE_HEAD; next+=4;}
+	if (0 == strncasecmp(next, "POST",  4)) { cn->req_type=REQTYPE_POST; next+=4;}
+	*next = '\0';
+	/* URL */
+	next++;
+	cn->url = next;
+	/* maybe GET data, for sure HTTP_VERSION */
 	while ( (*next != '\r') ) {
 		switch (*next) {
 			case ' ':
-				spc_cnt++;
-				if (1 == spc_cnt) {
-					cn->req_type = get_http_method( cn->data_buf_head );
-					cn->url = next+1;
-				}
-				else if(2 == spc_cnt) {
-					cn->http_prot = get_http_version( next+1 );
-				}
+				done_url = 1;
 				*next = '\0';
 				break;
 			case '?':
+				done_url = 1;
 				cn->pay_load = next+1;
 				*next = '\0';
 				break;
-
+			case '/':
+				if (! done_url)
+					slash_cnt++;
+				break;
+			case '=':
+				if (done_url)
+					get_cnt++;
+				break;
 			default:
-				// keep going
+				// keep chewing
 				break;
 		}
 		next++;
 	}
+	if (0 == strncasecmp(next-8, "HTTP/0.9", 8)) { cn->http_prot=HTTP_09; }
+	if (0 == strncasecmp(next-8, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
+	if (0 == strncasecmp(next-8, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
+	printf("URL SLASHES: %d    --- GET PARAMTERS: %d\n", slash_cnt, get_cnt);
 }
 
-static enum req_types
-get_http_method( char *req )
-{
-	if (0 == strncasecmp(req, "GET",   3)) { return REQTYPE_GET; }
-	if (0 == strncasecmp(req, "HEAD",  4)) { return REQTYPE_HEAD; }
-	if (0 == strncasecmp(req, "POST",  4)) { return REQTYPE_POST; }
-	return -1;
-}
-
-static enum http_version
-get_http_version( char *req )
-{
-	if (0 == strncasecmp(req, "HTTP/0.9", 8)) { return HTTP_09; }
-	if (0 == strncasecmp(req, "HTTP/1.0", 8)) { return HTTP_10; }
-	if (0 == strncasecmp(req, "HTTP/1.1", 8)) { return HTTP_11; }
-	return -1;
-}
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
