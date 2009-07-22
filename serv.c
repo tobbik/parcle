@@ -534,13 +534,13 @@ send_file (struct cn_strct *cn)
 
 /*
  * * Isolate "METHOD URL?GET_PARAMS HTTP_VER" from first request line
- * -count '/' to help the url delimiter, count '?/ to get parser
+ * - count '/' to help the url delimiter, count '?/ to get parser
  */
 void
 parse_first_line( struct cn_strct *cn )
 {
 	char          *next  = cn->data_buf_head;
-	unsigned short done_url=0, get_cnt=0, slash_cnt=0;
+	unsigned short got_get=0, get_cnt=0, slash_cnt=0, error=0;
 	/* METHOD */
 	if (0 == strncasecmp(next, "GET",   3)) { cn->req_type=REQTYPE_GET;  next+=3;}
 	if (0 == strncasecmp(next, "HEAD",  4)) { cn->req_type=REQTYPE_HEAD; next+=4;}
@@ -548,26 +548,33 @@ parse_first_line( struct cn_strct *cn )
 	*next = '\0';
 	/* URL */
 	next++;
-	cn->url = next;
-	/* maybe GET data, for sure HTTP_VERSION */
-	while ( (*next != '\r') ) {
+	if ('/' == *next)
+		cn->url = next;
+	else {
+		// we are extremely unhappy ... -> malformed url
+		// error(400, "URL has to start with a '/'!");
+		printf("Crying game....\n");
+	}
+	/* chew through url, find GET, check url sanity
+	 */
+	while ( !got_get && ' ' != *next ) {
 		switch (*next) {
 			case ' ':
-				done_url = 1;
 				*next = '\0';
 				break;
 			case '?':
-				done_url = 1;
+				got_get = 1;
 				cn->pay_load = next+1;
 				*next = '\0';
 				break;
 			case '/':
-				if (! done_url)
-					slash_cnt++;
+				slash_cnt++;
+				if ('.' == *(next+1) && '.' == *(next+2) && '/' == *(next+3))
+					slash_cnt--;
 				break;
-			case '=':
-				if (done_url)
-					get_cnt++;
+			case '.':
+				if ('/' == *(next-1) && '/' != *(next+1))
+					error = 400;  /* trying to reach hidden files */
 				break;
 			default:
 				// keep chewing
@@ -575,10 +582,25 @@ parse_first_line( struct cn_strct *cn )
 		}
 		next++;
 	}
-	if (0 == strncasecmp(next-8, "HTTP/0.9", 8)) { cn->http_prot=HTTP_09; }
-	if (0 == strncasecmp(next-8, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
-	if (0 == strncasecmp(next-8, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
-	printf("URL SLASHES: %d    --- GET PARAMTERS: %d\n", slash_cnt, get_cnt);
+	/* GET - count get parameters */
+	while ( got_get && ' ' != *next ) {
+		switch (*next) {
+			case '=':
+				get_cnt++;
+				break;
+			default:
+				// keep chewing
+				break;
+		}
+		next++;
+	}
+	*next = '\0';
+	next++;
+	/* GET - count get parameters */
+	if (0 == strncasecmp(next, "HTTP/0.9", 8)) { cn->http_prot=HTTP_09; }
+	if (0 == strncasecmp(next, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
+	if (0 == strncasecmp(next, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
+	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n", slash_cnt, get_cnt, error);
 }
 
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
