@@ -25,6 +25,7 @@
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP1.1"
 #define DEBUG_VERBOSE            0
+#define WEB_ROOT                 "/mnt/data/websites/testweb/www"
 
 enum req_states
 {
@@ -154,6 +155,10 @@ main(int argc, char *argv[])
 	printf("%s: listening on port %d (http)\n",
 			_Server_version, HTTP_PORT);
 #endif
+	// DIRTY!!!
+	/*if (chdir(WEB_ROOT))
+		clean_on_quit(2);
+	*/
 
 	// main loop
 	while (1) {
@@ -603,4 +608,13 @@ parse_first_line( struct cn_strct *cn )
 	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n", slash_cnt, get_cnt, error);
 }
 
+/* is it static -> does the file exist?
+ * is it dynamic -> do we have an entry point?
+ */
+void
+determine_url( struct cn_strct *cn )
+{
+
+
+}
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
