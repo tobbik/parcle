@@ -25,7 +25,7 @@
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP1.1"
 #define DEBUG_VERBOSE            0
-#define WEB_ROOT                 "/mnt/data/websites/testweb/www"
+#define WEB_ROOT                 "./webroot"
 
 enum req_states
 {
@@ -90,6 +90,7 @@ static void send_file( struct cn_strct *cn );
 
 /* Forwad declaration of string parsing methods */
 static void               parse_first_line( struct cn_strct *cn );
+static const char        *getmimetype(const char *name);
 
 /* clean up after ourselves */
 static void
@@ -156,9 +157,8 @@ main(int argc, char *argv[])
 			_Server_version, HTTP_PORT);
 #endif
 	// DIRTY!!!
-	/*if (chdir(WEB_ROOT))
+	if (chdir(WEB_ROOT))
 		clean_on_quit(2);
-	*/
 
 	// main loop
 	while (1) {
@@ -461,25 +461,27 @@ write_head (struct cn_strct *cn)
 	char date[32];
 	int file_exists;
 
-	file_exists = stat("serv.c", &stbuf);
+	cn->url++;
+	file_exists = stat(cn->url, &stbuf);
 
 
 	if (file_exists == -1)
 	{
 		//send_error(cn, 404);
-		printf("Sorry dude, didn't finde the file");
+		printf("Sorry dude, didn't find the file");
+		remove_conn_from_list(cn);
 		return;
 	}
 
 	strcpy(date, ctime(&now));
 
-	cn->file_desc = open("serv.c", O_RDONLY);
+	cn->file_desc = open(cn->url, O_RDONLY);
 
 	snprintf(buf, sizeof(buf),
 		HTTP_VERSION" 200 OK\nServer: %s\n"
 		"Content-Type: %s\nContent-Length: %ld\n"
 		"Date: %sLast-Modified: %s\n", _Server_version,
-		"text/x-c", (long) stbuf.st_size,
+		getmimetype(cn->url), (long) stbuf.st_size,
 		date, ctime(&stbuf.st_mtime)
 	); /* ctime() has a \n on the end */
 
@@ -608,13 +610,33 @@ parse_first_line( struct cn_strct *cn )
 	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n", slash_cnt, get_cnt, error);
 }
 
-/* is it static -> does the file exist?
+/* is it static ?
  * is it dynamic -> do we have an entry point?
  */
 void
 determine_url( struct cn_strct *cn )
 {
+	if (0 == strncasecmp(cn->url, "/static/", 8)) {
+
+	}
 
 
 }
+
+
+
+static const char
+*getmimetype(const char *name)
+{
+	/* only bother with a few mime types - let the browser figure the rest out */
+	if (strstr(name, ".htm"))
+		return "text/html";
+	else if (strstr(name, ".css"))
+		return "text/css";
+	else if (strstr(name, ".js"))
+		return "text/javascript";
+	else
+		return "application/octet-stream";
+}
+
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
