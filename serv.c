@@ -547,8 +547,6 @@ send_file (struct cn_strct *cn)
 	}
 }
 
-
-
 /*___   _    ____  ____  _____   _   _ _____ _     ____  _____ ____  ____
 |  _ \ / \  |  _ \/ ___|| ____| | | | | ____| |   |  _ \| ____|  _ \/ ___|
 | |_) / _ \ | |_) \___ \|  _|   | |_| |  _| | |   | |_) |  _| | |_) \___ \
@@ -624,7 +622,8 @@ parse_first_line( struct cn_strct *cn )
 	if (0 == strncasecmp(next, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
 	if (0 == strncasecmp(next, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
 #if DEBUG_VERBOSE==1
-	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n", slash_cnt, get_cnt, error);
+	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n",
+		slash_cnt, get_cnt, error);
 #endif
 }
 
@@ -637,8 +636,6 @@ determine_url( struct cn_strct *cn )
 	if (0 == strncasecmp(cn->url, "/static/", 8)) {
 
 	}
-
-
 }
 
 
