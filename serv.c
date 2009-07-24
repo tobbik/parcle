@@ -398,8 +398,8 @@ read_request( struct cn_strct *cn )
 	num_recv = recv(
 		cn->net_socket,
 		cn->data_buf,
-		//RECV_BUFF_LENGTH - cn->processed_bytes,
-		MAX_READ_LENGTH,
+		RECV_BUFF_LENGTH - cn->processed_bytes,
+		//MAX_READ_LENGTH,
 		0
 	);
 
