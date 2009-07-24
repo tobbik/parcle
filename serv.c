@@ -223,25 +223,33 @@ main(int argc, char *argv[])
 			if (REQSTATE_READ_HEAD == to->req_state &&
 			  FD_ISSET(to->net_socket, &rfds)) {
 				readsocks--;
+#if DEBUG_VERBOSE == 1
 				printf("WANNA RECV HEAD\n");
+#endif
 				read_request(to);
 			}
 			if (REQSTATE_SEND_HEAD == to->req_state &&
 			  FD_ISSET(to->net_socket, &wfds)) {
 				readsocks--;
+#if DEBUG_VERBOSE == 1
 				printf("WANNA SEND HEAD\n");
+#endif
 				write_head(to);
 			}
 			if (REQSTATE_BUFF_FILE == to->req_state &&
 			  FD_ISSET(to->file_desc, &rfds)) {
 				readsocks--;
+#if DEBUG_VERBOSE == 1
 				printf("WANNA BUFF FILE\n");
+#endif
 				buff_file(to);
 			}
 			if (REQSTATE_SEND_FILE == to->req_state &&
 			  FD_ISSET(to->net_socket, &wfds)) {
 				readsocks--;
+#if DEBUG_VERBOSE == 1
 				printf("WANNA SEND FILE\n");
+#endif
 				send_file(to);
 			}
 		}
@@ -430,7 +438,9 @@ read_request( struct cn_strct *cn )
 						parse_first_line(cn);
 					}
 					if (*(next+2)=='\r' && *(next+3)=='\n'  ) {
+#if DEBUG_VERBOSE==1
 						printf("LINE COUNT: %d\n", cn->line_count);
+#endif
 						// proceed next stage
 						cn->req_state = REQSTATE_SEND_HEAD;
 					}
@@ -441,12 +451,14 @@ read_request( struct cn_strct *cn )
 		}
 		next++;
 	}
+#if DEBUG_VERBOSE == 1
 	if (REQSTATE_SEND_HEAD == cn->req_state) {
 		printf("METHOD: %d\n", cn->req_type);
 		printf("URL: %s\n", cn->url);
 		printf("PROTOCOL: %d\n", cn->http_prot);
 		printf("PAYLOAD: %s\n", cn->pay_load);
 	}
+#endif
 }
 
 
@@ -494,7 +506,9 @@ void
 buff_file (struct cn_strct *cn)
 {
 	int rv = read(cn->file_desc, cn->data_buf_head, RECV_BUFF_LENGTH);
+#if DEBUG_VERBOSE == 1
 	printf("\n\nbuffered:%d\n", rv);
+#endif
 	cn->data_buf    =    cn->data_buf_head;
 
 	if (rv <= 0) {
@@ -515,7 +529,9 @@ send_file (struct cn_strct *cn)
 	int rv = send (cn->net_socket, cn->data_buf,
 		cn->processed_bytes, 0);
 
+#if DEBUG_VERBOSE == 1
 	printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes);
+#endif
 	if (rv < 0) {
 		remove_conn_from_list(cn);
 	}
@@ -607,7 +623,9 @@ parse_first_line( struct cn_strct *cn )
 	if (0 == strncasecmp(next, "HTTP/0.9", 8)) { cn->http_prot=HTTP_09; }
 	if (0 == strncasecmp(next, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
 	if (0 == strncasecmp(next, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
+#if DEBUG_VERBOSE==1
 	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n", slash_cnt, get_cnt, error);
+#endif
 }
 
 /* is it static ?
