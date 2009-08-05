@@ -20,7 +20,8 @@ Basic ideas it is modelled around:
 Compilation:
 -----------
 Check out the future. The main build system is based on clang, the new C
-frontend to LLVM. Much better error messages make it all worth wile.
+frontend to LLVM. Much better error messages make it all worth wile. Lua must be
+installed. Run make and you shall be happy.
 
 Plans:
 -----
