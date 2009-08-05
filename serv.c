@@ -59,7 +59,7 @@ struct cn_strct
 
 	/* incoming buffer */
 	char                 *data_buf_head;      /* points to start, always */
-	char                 *data_buf;           /* points to current point of interest */
+	char                 *data_buf;           /* points to current spot */
 	int                   processed_bytes;
 	/* inc buffer state */
 	int                   line_count;
@@ -70,27 +70,31 @@ struct cn_strct
 	enum    http_version  http_prot;
 };
 
+// test lua execution
+lua_State            *L;
+
+
 /* global variables */
 struct cn_strct     *_Free_conns;
 struct cn_strct     *_Busy_conns;
 const char * const   _Server_version = "testserver/poc";
-int                  master_sock;      /* listening master socket ( global for cleanup ) */
+int                  _master_sock;      /* listening master socket */
 
 /* forward declaration of some connection helpers */
-static int  create_listener(int port);
-static void handle_new_conn(int listenfd);
-static void add_conn_to_list(int sd, char *ip);
-static void remove_conn_from_list(struct cn_strct *cn);
+static int   create_listener        ( int port );
+static void  handle_new_conn        ( int listenfd );
+static void  add_conn_to_list       ( int sd, char *ip );
+static void  remove_conn_from_list  ( struct cn_strct *cn );
 
 /* Forward declaration of select's processing helpers */
-static void read_request( struct cn_strct *cn );
-static void write_head( struct cn_strct *cn );
-static void buff_file( struct cn_strct *cn );
-static void send_file( struct cn_strct *cn );
+static void  read_request           ( struct cn_strct *cn );
+static void  write_head             ( struct cn_strct *cn );
+static void  buff_file              ( struct cn_strct *cn );
+static void  send_file              ( struct cn_strct *cn );
 
 /* Forwad declaration of string parsing methods */
-static void               parse_first_line( struct cn_strct *cn );
-static const char        *getmimetype(const char *name);
+static void  parse_first_line       ( struct cn_strct *cn );
+static const char  *getmimetype     ( const char *name );
 
 /* clean up after ourselves */
 static void
@@ -112,7 +116,8 @@ clean_on_quit(int sig)
 		free(_Busy_conns);
 		_Busy_conns = tp;
 	}
-	close(master_sock);
+	close(_master_sock);
+	_master_sock = -1;
 	printf("Graceful exit done after signal: %d\n", sig);
 
 	exit(0);
@@ -145,14 +150,14 @@ main(int argc, char *argv[])
 		_Free_conns->next = tp;
 	}
 
-	if ((master_sock = create_listener(HTTP_PORT)) == -1) {
+	if ((_master_sock = create_listener(HTTP_PORT)) == -1) {
 		fprintf(stderr, "ERR: Couldn't bind to port %d\n",
 				HTTP_PORT);
 		exit(1);
 	}
 
 #if DEBUG_VERBOSE == 1
-	printf("MASTER SOCKET: %d\n", master_sock);
+	printf("MASTER SOCKET: %d\n", _master_sock);
 	printf("%s: listening on port %d (http)\n",
 			_Server_version, HTTP_PORT);
 #endif
@@ -168,8 +173,8 @@ main(int argc, char *argv[])
 		rnum = wnum = -1;
 
 		// Add master listener to reading sockets
-		FD_SET(master_sock, &rfds);
-		rnum = master_sock;
+		FD_SET(_master_sock, &rfds);
+		rnum = _master_sock;
 
 		// Add the established sockets
 		tp = _Busy_conns;
@@ -208,8 +213,8 @@ main(int argc, char *argv[])
 		);
 
 		// is the main listener in the read set? -> New connection
-		if (FD_ISSET(master_sock, &rfds)) {
-			handle_new_conn(master_sock);
+		if (FD_ISSET(_master_sock, &rfds)) {
+			handle_new_conn(_master_sock);
 			readsocks--;
 		}
 
@@ -480,7 +485,7 @@ write_head (struct cn_strct *cn)
 	if (file_exists == -1)
 	{
 		//send_error(cn, 404);
-		printf("Sorry dude, didn't find the file");
+		printf("Sorry dude, didn't find the file: %s\n", cn->url);
 		remove_conn_from_list(cn);
 		return;
 	}
@@ -563,9 +568,9 @@ parse_first_line( struct cn_strct *cn )
 	char          *next  = cn->data_buf_head;
 	unsigned short got_get=0, get_cnt=0, slash_cnt=0, error=0;
 	/* METHOD */
-	if (0 == strncasecmp(next, "GET",   3)) { cn->req_type=REQTYPE_GET;  next+=3;}
-	if (0 == strncasecmp(next, "HEAD",  4)) { cn->req_type=REQTYPE_HEAD; next+=4;}
-	if (0 == strncasecmp(next, "POST",  4)) { cn->req_type=REQTYPE_POST; next+=4;}
+	if (0 == strncasecmp(next, "GET",  3)) { cn->req_type=REQTYPE_GET;  next+=3;}
+	if (0 == strncasecmp(next, "HEAD", 4)) { cn->req_type=REQTYPE_HEAD; next+=4;}
+	if (0 == strncasecmp(next, "POST", 4)) { cn->req_type=REQTYPE_POST; next+=4;}
 	*next = '\0';
 	/* URL */
 	next++;
