@@ -25,7 +25,9 @@
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP1.1"
 #define DEBUG_VERBOSE            0
-#define WEB_ROOT                 "./webroot"
+#define WEB_ROOT                 "./"
+#define STATIC_ROOT              "webroot"
+#define STATIC_ROOT_LENGTH       7
 
 enum req_states
 {
@@ -459,29 +461,35 @@ write_head (struct cn_strct *cn)
 	char date[32];
 	int file_exists;
 
-	cn->url++;
-	file_exists = stat(cn->url, &stbuf);
-
-
-	if (file_exists == -1)
-	{
-		//send_error(cn, 404);
-		printf("Sorry dude, didn't find the file: %s\n", cn->url);
-		remove_conn_from_list(cn);
-		return;
-	}
-
 	strcpy(date, ctime(&now));
 
-	cn->file_desc = open(cn->url, O_RDONLY);
+	/* check if we request a static file */
+	if (0 == strncasecmp(++cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH)) {
+		//cn->url++;              /* eat leading slash */
+		printf("YES, that will be static!\n");
+		file_exists = stat(cn->url, &stbuf);
 
-	snprintf(buf, sizeof(buf),
-		HTTP_VERSION" 200 OK\nServer: %s\n"
-		"Content-Type: %s\nContent-Length: %ld\n"
-		"Date: %sLast-Modified: %s\n", _Server_version,
-		getmimetype(cn->url), (long) stbuf.st_size,
-		date, ctime(&stbuf.st_mtime)
-	); /* ctime() has a \n on the end */
+		if (file_exists == -1)
+		{
+			//send_error(cn, 404);
+			printf("Sorry dude, didn't find the file: %s\n", cn->url);
+			remove_conn_from_list(cn);
+			return;
+		}
+
+		cn->file_desc = open(cn->url, O_RDONLY);
+
+		snprintf(buf, sizeof(buf),
+			HTTP_VERSION" 200 OK\nServer: %s\n"
+			"Content-Type: %s\nContent-Length: %ld\n"
+			"Date: %sLast-Modified: %s\n", _Server_version,
+			getmimetype(cn->url), (long) stbuf.st_size,
+			date, ctime(&stbuf.st_mtime)
+		); /* ctime() has a \n on the end */
+	}
+	else {
+		//ne ermind for now
+	}
 
 	send(cn->net_socket, buf, strlen(buf), 0);
 	cn->req_state = REQSTATE_BUFF_FILE;
