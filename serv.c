@@ -157,7 +157,6 @@ main(int argc, char *argv[])
 	}
 
 #if DEBUG_VERBOSE == 1
-	printf("MASTER SOCKET: %d\n", _master_sock);
 	printf("%s: listening on port %d (http)\n",
 			_Server_version, HTTP_PORT);
 #endif
@@ -200,9 +199,6 @@ main(int argc, char *argv[])
 			}
 			tp = tp->next;
 		}
-#if DEBUG_VERBOSE == 1
-		printf("b4 START SELECT ---- WNUM: %d    RNUM: %d\n", wnum, rnum);
-#endif
 
 		readsocks = select(
 			(wnum > rnum) ? wnum+1 : rnum+1,
@@ -337,9 +333,6 @@ add_conn_to_list(int sd, char *ip)
 static void
 handle_new_conn(int listen_sd)
 {
-#if DEBUG_VERBOSE == 1
-	printf("starthandling  NEW connection\n");
-#endif
 	struct sockaddr_in their_addr;
 	socklen_t tp = sizeof(struct sockaddr_in);
 	int connfd = accept(listen_sd, (struct sockaddr *)&their_addr, &tp);
@@ -425,14 +418,6 @@ read_request( struct cn_strct *cn )
 	// null terminate the current buffer
 	cn->data_buf_head[cn->processed_bytes] = '\0';
 
-#if DEBUG_VERBOSE==1
-	printf("%s\n", cn->data_buf_head);
-	printf("%c --- %d\n\n\n",
-		cn->data_buf_head[cn->processed_bytes-1],
-		cn->processed_bytes
-	);
-#endif
-
 	/* a naive little line parser */
 	while ( (*next != '\0') ) {
 		switch (*next) {
@@ -443,9 +428,6 @@ read_request( struct cn_strct *cn )
 						parse_first_line(cn);
 					}
 					if (*(next+2)=='\r' && *(next+3)=='\n'  ) {
-#if DEBUG_VERBOSE==1
-						printf("LINE COUNT: %d\n", cn->line_count);
-#endif
 						// proceed next stage
 						cn->req_state = REQSTATE_SEND_HEAD;
 					}
@@ -458,14 +440,13 @@ read_request( struct cn_strct *cn )
 	}
 #if DEBUG_VERBOSE == 1
 	if (REQSTATE_SEND_HEAD == cn->req_state) {
-		printf("METHOD: %d\n", cn->req_type);
-		printf("URL: %s\n", cn->url);
+		printf("METHOD: %d\n",   cn->req_type);
+		printf("URL: %s\n",      cn->url);
 		printf("PROTOCOL: %d\n", cn->http_prot);
-		printf("PAYLOAD: %s\n", cn->pay_load);
+		printf("PAYLOAD: %s\n",  cn->pay_load);
 	}
 #endif
 }
-
 
 /*
  */
@@ -519,7 +500,6 @@ buff_file (struct cn_strct *cn)
 	if (rv <= 0) {
 		close(cn->file_desc);
 		cn->file_desc = -1;
-		close(cn->file_desc);
 		remove_conn_from_list(cn);
 		return;
 	}
@@ -574,15 +554,15 @@ parse_first_line( struct cn_strct *cn )
 	*next = '\0';
 	/* URL */
 	next++;
-	if ('/' == *next)
+	if ('/' == *next) {
 		cn->url = next;
+	}
 	else {
 		// we are extremely unhappy ... -> malformed url
 		// error(400, "URL has to start with a '/'!");
 		printf("Crying game....\n");
 	}
-	/* chew through url, find GET, check url sanity
-	 */
+	/* chew through url, find GET, check url sanity */
 	while ( !got_get && ' ' != *next ) {
 		switch (*next) {
 			case ' ':
