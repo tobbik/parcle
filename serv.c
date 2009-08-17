@@ -13,6 +13,10 @@
 #include <fcntl.h>
 #include <time.h>
 
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+
 /* A few constants */
 #define BACK_LOG                 5
 
@@ -28,6 +32,12 @@
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
+
+enum bool
+{
+	false,
+	true
+};
 
 enum req_states
 {
@@ -70,10 +80,15 @@ struct cn_strct
 	char                 *url;
 	char                 *pay_load;         // either GET or POST data
 	enum    http_version  http_prot;
+
+	/* Lua state -> a "lua thread" aka. coroutine */
+	enum    bool          is_static;
+	lua_State            *Lua;
+
 };
 
 // test lua execution
-lua_State            *L;
+lua_State            *_L;
 
 
 /* global variables */
@@ -97,6 +112,15 @@ static void  send_file              ( struct cn_strct *cn );
 /* Forwad declaration of string parsing methods */
 static void  parse_first_line       ( struct cn_strct *cn );
 static const char  *getmimetype     ( const char *name );
+
+/* Forwad declaration of lua bound methods */
+static int   l_send_chunk           ( lua_State *L );
+static const struct luaL_reg app_lib [] = {
+	{"send",   l_send_chunk},
+	{NULL, NULL}
+};
+
+
 
 /* clean up after ourselves */
 static void
@@ -122,6 +146,9 @@ clean_on_quit(int sig)
 	_master_sock = -1;
 	printf("Graceful exit done after signal: %d\n", sig);
 
+	/* cleanup Lua */
+	lua_close(_L);
+
 	exit(0);
 }
 
@@ -144,14 +171,27 @@ main(int argc, char *argv[])
 	signal(SIGTERM, die);
 	signal(SIGINT, clean_on_quit);
 
+	// DIRTY!!!
+	if (chdir(WEB_ROOT))
+		clean_on_quit(2);
+
+	/* initialize Lua and load base libs for the app engine */
+	_L = lua_open();
+	luaL_openlibs(_L);
+	luaL_openlib(_L, "parcle", app_lib, 0);
+	i = luaL_dofile(_L, "app/_init.lua");
+
+	/* Fill up the initial connection lists */
 	for (i = 0; i < INITIAL_CONNS; i++) {
 		tp = _Free_conns;
 		_Free_conns = (struct cn_strct *) calloc(1, sizeof(struct cn_strct));
 		_Free_conns->data_buf_head =
 			(char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
+		_Free_conns->Lua = lua_newthread(_L);
 		_Free_conns->next = tp;
 	}
 
+	/* create the master listener */
 	if ((_master_sock = create_listener(HTTP_PORT)) == -1) {
 		fprintf(stderr, "ERR: Couldn't bind to port %d\n",
 				HTTP_PORT);
@@ -162,11 +202,7 @@ main(int argc, char *argv[])
 	printf("%s: listening on port %d (http)\n",
 			_Server_version, HTTP_PORT);
 #endif
-	// DIRTY!!!
-	if (chdir(WEB_ROOT))
-		clean_on_quit(2);
-
-	// main loop
+	/* main loop */
 	while (1) {
 		// clean socket lists
 		FD_ZERO(&rfds);
@@ -182,7 +218,6 @@ main(int argc, char *argv[])
 
 		/* Adding connection to the SocketSets based on state */
 		while (tp != NULL) {
-
 			if (REQSTATE_READ_HEAD == tp->req_state) {
 				FD_SET(tp->net_socket, &rfds);
 				rnum = (tp->net_socket > rnum) ? tp->net_socket : rnum;
@@ -259,12 +294,14 @@ main(int argc, char *argv[])
 	}
 	return 0;
 }
+
+
 /*____ ___  _   _ _   _   _   _ _____ _     ____  _____ ____  ____
  / ___/ _ \| \ | | \ | | | | | | ____| |   |  _ \| ____|  _ \/ ___|
 | |  | | | |  \| |  \| | | |_| |  _| | |   | |_) |  _| | |_) \___ \
 | |__| |_| | |\  | |\  | |  _  | |___| |___|  __/| |___|  _ < ___) |
  \____\___/|_| \_|_| \_| |_| |_|_____|_____|_|   |_____|_| \_\____/ */
-// create the master listening socket
+/* create the master listening socket */
 static int
 create_listener(int port)
 {
@@ -307,6 +344,7 @@ add_conn_to_list(int sd, char *ip)
 	if (NULL == _Free_conns) {
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
+		tp->Lua = lua_newthread(_L);
 	}
 	else {
 		tp = _Free_conns;
@@ -328,8 +366,9 @@ add_conn_to_list(int sd, char *ip)
 	tp->req_state = REQSTATE_READ_HEAD;
 	tp->req_type  = REQTYPE_GET;
 	tp->processed_bytes  = 0;
-	tp->line_count  = 0;
-	tp->pay_load  = '\0';
+	tp->line_count       = 0;
+	tp->pay_load         = '\0';
+	tp->is_static        = false;
 }
 
 static void
@@ -394,7 +433,7 @@ read_request( struct cn_strct *cn )
 	char *next;
 	int   num_recv;
 
-	/* For now assume that RECV_BUFF_LENGTH is enough for one read */
+	/* FIXME: For now assume that RECV_BUFF_LENGTH is enough for one read */
 	num_recv = recv(
 		cn->net_socket,
 		cn->data_buf,
@@ -464,8 +503,8 @@ write_head (struct cn_strct *cn)
 	strcpy(date, ctime(&now));
 
 	/* check if we request a static file */
-	if (0 == strncasecmp(++cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH)) {
-		//cn->url++;              /* eat leading slash */
+	if (cn->is_static) {
+		cn->url++;              /* eat leading slash */
 		printf("YES, that will be static!\n");
 		file_exists = stat(cn->url, &stbuf);
 
@@ -486,13 +525,21 @@ write_head (struct cn_strct *cn)
 			getmimetype(cn->url), (long) stbuf.st_size,
 			date, ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
+		send(cn->net_socket, buf, strlen(buf), 0);
+		/* FIXME: we assume the head gets send of in one rush */
+		cn->req_state = REQSTATE_BUFF_FILE;
 	}
 	else {
-		//ne ermind for now
+		// execute application
+		lua_getglobal(cn->Lua, "send_result");        /* function to be called */
+		lua_pushnumber(cn->Lua, cn->net_socket);      /* push socket */
+		lua_resume(cn->Lua, 1);                       /* do thread, 1 arg */
+		lua_pop(cn->Lua, 1);                          /* clean the stack */
+
+		/* FIXME: we assume the head gets send of in one rush */
+		cn->req_state = REQSTATE_SEND_FILE;
 	}
 
-	send(cn->net_socket, buf, strlen(buf), 0);
-	cn->req_state = REQSTATE_BUFF_FILE;
 }
 
 
@@ -519,24 +566,31 @@ buff_file (struct cn_strct *cn)
 void
 send_file (struct cn_strct *cn)
 {
-	int rv = send (cn->net_socket, cn->data_buf,
-		cn->processed_bytes, 0);
+	int rv;
+	if (cn->is_static) {
+		rv = send (cn->net_socket, cn->data_buf,
+			cn->processed_bytes, 0);
 
 #if DEBUG_VERBOSE == 1
-	printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes);
+		printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes);
 #endif
-	if (rv < 0) {
-		remove_conn_from_list(cn);
-	}
-	else if (rv == cn->processed_bytes) {
-		cn->req_state = REQSTATE_BUFF_FILE;
-	}
-	else if (0 == rv) {
-		/* Do nothing */
+		if (rv < 0) {
+			remove_conn_from_list(cn);
+		}
+		else if (rv == cn->processed_bytes) {
+			cn->req_state = REQSTATE_BUFF_FILE;
+		}
+		else if (0 == rv) {
+			/* Do nothing */
+		}
+		else {
+			cn->data_buf = cn->data_buf + rv;
+			cn->processed_bytes -= rv;
+		}
 	}
 	else {
-		cn->data_buf = cn->data_buf + rv;
-		cn->processed_bytes -= rv;
+		lua_resume(cn->Lua, 1);                   /* do thread, 1 arg */
+		cn->req_state = REQSTATE_BUFF_FILE;
 	}
 }
 
@@ -564,6 +618,9 @@ parse_first_line( struct cn_strct *cn )
 	next++;
 	if ('/' == *next) {
 		cn->url = next;
+		if (0 == strncasecmp(next+1, STATIC_ROOT, STATIC_ROOT_LENGTH)) {
+			cn->is_static = true;
+		}
 	}
 	else {
 		// we are extremely unhappy ... -> malformed url
@@ -615,23 +672,10 @@ parse_first_line( struct cn_strct *cn )
 	if (0 == strncasecmp(next, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
 	if (0 == strncasecmp(next, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
 #if DEBUG_VERBOSE==1
-	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n",
-		slash_cnt, get_cnt, error);
+	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d --LUA: %d\n",
+		slash_cnt, get_cnt, error, cn->is_static);
 #endif
 }
-
-/* is it static ?
- * is it dynamic -> do we have an entry point?
- */
-void
-determine_url( struct cn_strct *cn )
-{
-	if (0 == strncasecmp(cn->url, "/static/", 8)) {
-
-	}
-}
-
-
 
 static const char
 *getmimetype(const char *name)
@@ -646,5 +690,39 @@ static const char
 	else
 		return "application/octet-stream";
 }
+
+/*_                  _ _ _
+ | |   _   _  __ _  | (_) |__  ___
+ | |  | | | |/ _` | | | | '_ \/ __|
+ | |__| |_| | (_| | | | | |_) \__ \
+ |_____\__,_|\__,_| |_|_|_.__/|___/ */
+
+// FIXME: less than ideal, we tonumber the socket into Lua, we shall use the
+// cn_strct as lightuserdata instead
+/*
+ * @param:        the socket reference
+ * @param:        the string reference
+ * @param:        current sending offset in the string
+ * @return:       string offset after sending
+ */
+static int
+l_send_chunk (lua_State *L)
+{
+	int         sockfd;
+	const char *data     = NULL;
+	int         length   = 0;
+	int         offset   = 0 ;
+
+	sockfd =  lua_tonumber(L, 1);
+	data   =  lua_tostring(L, 2);
+	length =  lua_strlen  (L, 2 );
+
+	offset += write( sockfd,   data + offset, length - offset);
+	printf("ESECUTE SENDING");
+	lua_pushnumber(L, offset);  /* how much did we get done? */
+
+	return 1;
+}
+
 
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
