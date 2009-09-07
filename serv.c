@@ -84,7 +84,6 @@ struct cn_strct
 	/* Lua state -> a "lua thread" aka. coroutine */
 	enum    bool          is_static;
 	lua_State            *Lua;
-
 };
 
 // test lua execution
@@ -95,7 +94,7 @@ lua_State            *_L;
 struct cn_strct     *_Free_conns;
 struct cn_strct     *_Busy_conns;
 const char * const   _Server_version = "testserver/poc";
-int                  _master_sock;      /* listening master socket */
+int                  _Master_sock;      /* listening master socket */
 
 /* forward declaration of some connection helpers */
 static int   create_listener        ( int port );
@@ -142,8 +141,8 @@ clean_on_quit(int sig)
 		free(_Busy_conns);
 		_Busy_conns = tp;
 	}
-	close(_master_sock);
-	_master_sock = -1;
+	close(_Master_sock);
+	_Master_sock = -1;
 	printf("Graceful exit done after signal: %d\n", sig);
 
 	/* cleanup Lua */
@@ -171,7 +170,7 @@ main(int argc, char *argv[])
 	signal(SIGTERM, die);
 	signal(SIGINT, clean_on_quit);
 
-	// DIRTY!!!
+	// DIRTY!!! we work out of the webroot directory -> change to it
 	if (chdir(WEB_ROOT))
 		clean_on_quit(2);
 
@@ -192,7 +191,7 @@ main(int argc, char *argv[])
 	}
 
 	/* create the master listener */
-	if ((_master_sock = create_listener(HTTP_PORT)) == -1) {
+	if ((_Master_sock = create_listener(HTTP_PORT)) == -1) {
 		fprintf(stderr, "ERR: Couldn't bind to port %d\n",
 				HTTP_PORT);
 		exit(1);
@@ -210,8 +209,8 @@ main(int argc, char *argv[])
 		rnum = wnum = -1;
 
 		// Add master listener to reading sockets
-		FD_SET(_master_sock, &rfds);
-		rnum = _master_sock;
+		FD_SET(_Master_sock, &rfds);
+		rnum = _Master_sock;
 
 		// Add the established sockets
 		tp = _Busy_conns;
@@ -246,8 +245,8 @@ main(int argc, char *argv[])
 		);
 
 		// is the main listener in the read set? -> New connection
-		if (FD_ISSET(_master_sock, &rfds)) {
-			handle_new_conn(_master_sock);
+		if (FD_ISSET(_Master_sock, &rfds)) {
+			handle_new_conn(_Master_sock);
 			readsocks--;
 		}
 
@@ -717,12 +716,11 @@ l_send_chunk (lua_State *L)
 	data   =  lua_tostring(L, 2);
 	length =  lua_strlen  (L, 2 );
 
-	offset += write( sockfd,   data + offset, length - offset);
-	printf("ESECUTE SENDING");
+	offset += write( sockfd, data + offset, length - offset );
+	printf("EXECUTE SENDING\n");
 	lua_pushnumber(L, offset);  /* how much did we get done? */
 
 	return 1;
 }
-
 
 // vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
