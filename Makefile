@@ -1,7 +1,8 @@
 CC=clang -emit-llvm-bc -g -O0
+LD=llvm-ld -native
 
 srv: serv.o
-	llvm-ld -native serv.o -o $@ -llua -lm
+	$(LD) serv.o -o $@ -lpthread -llua -lm
 	-rm $@.bc
 .o:
 	$(CC) -c -o $@.o $@.c
