@@ -6,10 +6,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/* network, sockets, accept, IP handling */
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+
 #include <fcntl.h>
 #include <time.h>
 
@@ -78,7 +80,7 @@ struct cn_strct
 	/* head information */
 	enum    req_types     req_type;
 	char                 *url;
-	char                 *pay_load;         // either GET or POST data
+	char                 *pay_load;            /* either GET or POST data */
 	enum    http_version  http_prot;
 
 	/* Lua state -> a "lua thread" aka. coroutine */
@@ -91,8 +93,8 @@ lua_State            *_L;
 
 
 /* global variables */
-struct cn_strct     *_Free_conns;
-struct cn_strct     *_Busy_conns;
+struct cn_strct     *_Free_conns;       /* idleing conns */
+struct cn_strct     *_Busy_conns;       /* conns bound to actions */
 const char * const   _Server_version = "testserver/poc";
 int                  _Master_sock;      /* listening master socket */
 
@@ -108,15 +110,17 @@ static void  write_head             ( struct cn_strct *cn );
 static void  buff_file              ( struct cn_strct *cn );
 static void  send_file              ( struct cn_strct *cn );
 
-/* Forwad declaration of string parsing methods */
+/* Forward declaration of string parsing methods */
 static void  parse_first_line       ( struct cn_strct *cn );
 static const char  *getmimetype     ( const char *name );
 
 /* Forwad declaration of lua bound methods */
 static int   l_send_chunk           ( lua_State *L );
+
+/* set up the Lua bindings for C-functions */
 static const struct luaL_reg app_lib [] = {
 	{"send",   l_send_chunk},
-	{NULL, NULL}
+	{NULL,     NULL}
 };
 
 
@@ -157,6 +161,7 @@ die(int sig)
 	printf("Server stopped, caught signal: %d\n", sig);
 	exit(0);
 }
+
 
 int
 main(int argc, char *argv[])
@@ -201,6 +206,7 @@ main(int argc, char *argv[])
 	printf("%s: listening on port %d (http)\n",
 			_Server_version, HTTP_PORT);
 #endif
+
 	/* main loop */
 	while (1) {
 		// clean socket lists
@@ -238,8 +244,8 @@ main(int argc, char *argv[])
 
 		readsocks = select(
 			(wnum > rnum) ? wnum+1 : rnum+1,
-			rnum != -1 ? &rfds : NULL,
-			wnum != -1 ? &wfds : NULL,
+			(-1 != rnum)  ? &rfds : NULL,
+			(-1 != wnum)  ? &wfds : NULL,
 			(fd_set *) 0,
 			NULL
 		);
@@ -339,7 +345,7 @@ add_conn_to_list(int sd, char *ip)
 {
 	struct cn_strct *tp;
 
-	/* pull out connection struct ... or create one */
+	/* pop a cn_strct from the free list ... or create one */
 	if (NULL == _Free_conns) {
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
@@ -416,6 +422,7 @@ remove_conn_from_list(struct cn_strct *cn)
 		close(cn->net_socket);
 	}
 }
+
 
 /*___  _____ _     _____ ____ _____   ____  ____   ___   ____
 / ___|| ____| |   | ____/ ___|_   _| |  _ \|  _ \ / _ \ / ___|
@@ -525,6 +532,7 @@ write_head (struct cn_strct *cn)
 			date, ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
 		send(cn->net_socket, buf, strlen(buf), 0);
+
 		/* FIXME: we assume the head gets send of in one rush */
 		cn->req_state = REQSTATE_BUFF_FILE;
 	}
@@ -538,7 +546,6 @@ write_head (struct cn_strct *cn)
 		/* FIXME: we assume the head gets send of in one rush */
 		cn->req_state = REQSTATE_SEND_FILE;
 	}
-
 }
 
 
@@ -696,9 +703,9 @@ static const char
  | |__| |_| | (_| | | | | |_) \__ \
  |_____\__,_|\__,_| |_|_|_.__/|___/ */
 
-// FIXME: less than ideal, we tonumber the socket into Lua, we shall use the
-// cn_strct as lightuserdata instead
 /*
+ * FIXME: less than ideal, we tonumber the socket into Lua, we shall use the
+ * cn_strct as lightuserdata instead
  * @param:        the socket reference
  * @param:        the string reference
  * @param:        current sending offset in the string
@@ -723,4 +730,4 @@ l_send_chunk (lua_State *L)
 	return 1;
 }
 
-// vim: ts=4 sw=4 softtabstop=4 sta tw=80 list
+// vim: ts=4 sw=4 sts=4 sta tw=80 list
