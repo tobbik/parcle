@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
 
 /* network, sockets, accept, IP handling */
 #include <sys/socket.h>
@@ -15,10 +16,6 @@
 #include <fcntl.h>
 #include <time.h>
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-
 /* A few constants */
 #define BACK_LOG                 5
 
@@ -28,9 +25,11 @@
 #define RECV_BUFF_LENGTH         8196
 
 #define INITIAL_CONNS            5
+/* experimental number */
+#define WORKER_THREADS           10
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP1.1"
-#define DEBUG_VERBOSE            0
+#define DEBUG_VERBOSE            1
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
@@ -46,7 +45,8 @@ enum req_states
 	REQSTATE_READ_HEAD,
 	REQSTATE_SEND_HEAD,
 	REQSTATE_BUFF_FILE,
-	REQSTATE_SEND_FILE
+	REQSTATE_SEND_FILE,
+	REQSTATE_PROC_APP
 };
 
 enum req_types
@@ -83,14 +83,8 @@ struct cn_strct
 	char                 *pay_load;            /* either GET or POST data */
 	enum    http_version  http_prot;
 
-	/* Lua state -> a "lua thread" aka. coroutine */
 	enum    bool          is_static;
-	lua_State            *Lua;
 };
-
-// test lua execution
-lua_State            *_L;
-
 
 /* global variables */
 struct cn_strct     *_Free_conns;       /* idleing conns */
@@ -98,7 +92,19 @@ struct cn_strct     *_Busy_conns;       /* conns bound to actions */
 const char * const   _Server_version = "testserver/poc";
 int                  _Master_sock;      /* listening master socket */
 
-/* forward declaration of some connection helpers */
+/* we could wrap that in a structure but then that's boring .. for now */
+struct cn_strct     *_App_queue[WORKER_THREADS];
+int q_head;
+int q_tail;
+int q_full;
+int q_empty;
+pthread_mutex_t wake_worker_mutex  = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pull_job_mutex     = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  wake_worker_cond   = PTHREAD_COND_INITIALIZER;
+pthread_t            _Workers[WORKER_THREADS]; /* used to clean up */
+pthread_t            threads[WORKER_THREADS];
+
+/* Forward declaration of some connection helpers */
 static int   create_listener        ( int port );
 static void  handle_new_conn        ( int listenfd );
 static void  add_conn_to_list       ( int sd, char *ip );
@@ -114,22 +120,19 @@ static void  send_file              ( struct cn_strct *cn );
 static void  parse_first_line       ( struct cn_strct *cn );
 static const char  *getmimetype     ( const char *name );
 
-/* Forwad declaration of lua bound methods */
-static int   l_send_chunk           ( lua_State *L );
+/* Forward declaration of app bound methods */
+static void *run_app_thread         ( void *tid );
 
-/* set up the Lua bindings for C-functions */
-static const struct luaL_reg app_lib [] = {
-	{"send",   l_send_chunk},
-	{NULL,     NULL}
-};
-
-
+/* Forward declaration of queue related functions */
+void queue_push (struct cn_strct *in);
+void queue_poll (struct cn_strct **cn);
 
 /* clean up after ourselves */
 static void
 clean_on_quit(int sig)
 {
 	struct cn_strct *tp;
+	int i;
 
 	while (NULL != _Free_conns) {
 		tp = _Free_conns->next;
@@ -149,8 +152,12 @@ clean_on_quit(int sig)
 	_Master_sock = -1;
 	printf("Graceful exit done after signal: %d\n", sig);
 
-	/* cleanup Lua */
-	lua_close(_L);
+	/* cleanup the threads */
+	for(i = 0; i < WORKER_THREADS; i++) {
+		//pthread_kill(&_Workers[i], SIGTERM);
+		;
+	}
+
 
 	exit(0);
 }
@@ -179,20 +186,28 @@ main(int argc, char *argv[])
 	if (chdir(WEB_ROOT))
 		clean_on_quit(2);
 
-	/* initialize Lua and load base libs for the app engine */
-	_L = lua_open();
-	luaL_openlibs(_L);
-	luaL_openlib(_L, "parcle", app_lib, 0);
-	i = luaL_dofile(_L, "app/_init.lua");
-
 	/* Fill up the initial connection lists */
 	for (i = 0; i < INITIAL_CONNS; i++) {
 		tp = _Free_conns;
 		_Free_conns = (struct cn_strct *) calloc(1, sizeof(struct cn_strct));
 		_Free_conns->data_buf_head =
 			(char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
-		_Free_conns->Lua = lua_newthread(_L);
 		_Free_conns->next = tp;
+	}
+
+	/* set up queue */
+	q_empty = 1;
+	q_full  = 0;
+	q_head  = 0;
+	q_tail  = 0;
+
+	/* create workers for application
+	 * initialize Lua and load base libs for the app engine
+	 */
+	for(i = 0; i < WORKER_THREADS; i++) {
+		pthread_create(&_Workers[i], NULL, &run_app_thread, (void *) &i);
+		//pthread_create(&threads[i], NULL, &run_app_thread, (void *) &i);
+		//pthread_create(&threads[i], NULL, &t_funct,        (void *) &i);
 	}
 
 	/* create the master listener */
@@ -349,7 +364,6 @@ add_conn_to_list(int sd, char *ip)
 	if (NULL == _Free_conns) {
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
-		tp->Lua = lua_newthread(_L);
 	}
 	else {
 		tp = _Free_conns;
@@ -537,14 +551,15 @@ write_head (struct cn_strct *cn)
 		cn->req_state = REQSTATE_BUFF_FILE;
 	}
 	else {
-		// execute application
-		lua_getglobal(cn->Lua, "send_result");        /* function to be called */
-		lua_pushnumber(cn->Lua, cn->net_socket);      /* push socket */
-		lua_resume(cn->Lua, 1);                       /* do thread, 1 arg */
-		lua_pop(cn->Lua, 1);                          /* clean the stack */
+		printf("WE ARE IN DYNO ENV: %s\n", cn->url);
+		/* enqueue this connection to the _App_queue */
+		pthread_mutex_lock( &pull_job_mutex );
+		queue_push(cn);
+		pthread_mutex_unlock( &pull_job_mutex );
 
-		/* FIXME: we assume the head gets send of in one rush */
-		cn->req_state = REQSTATE_SEND_FILE;
+		cn->req_state = REQSTATE_PROC_APP;
+		/* wake a worker to start the application */
+		pthread_cond_signal (&wake_worker_cond);   /* we added one -> we wake one */
 	}
 }
 
@@ -573,7 +588,7 @@ void
 send_file (struct cn_strct *cn)
 {
 	int rv;
-	if (cn->is_static) {
+	//if (cn->is_static) {
 		rv = send (cn->net_socket, cn->data_buf,
 			cn->processed_bytes, 0);
 
@@ -583,7 +598,7 @@ send_file (struct cn_strct *cn)
 		if (rv < 0) {
 			remove_conn_from_list(cn);
 		}
-		else if (rv == cn->processed_bytes) {
+		else if (rv == cn->processed_bytes && cn->is_static) {
 			cn->req_state = REQSTATE_BUFF_FILE;
 		}
 		else if (0 == rv) {
@@ -593,11 +608,7 @@ send_file (struct cn_strct *cn)
 			cn->data_buf = cn->data_buf + rv;
 			cn->processed_bytes -= rv;
 		}
-	}
-	else {
-		lua_resume(cn->Lua, 1);                   /* do thread, 1 arg */
-		cn->req_state = REQSTATE_BUFF_FILE;
-	}
+	//}
 }
 
 /*___   _    ____  ____  _____   _   _ _____ _     ____  _____ ____  ____
@@ -697,37 +708,91 @@ static const char
 		return "application/octet-stream";
 }
 
-/*_                  _ _ _
- | |   _   _  __ _  | (_) |__  ___
- | |  | | | |/ _` | | | | '_ \/ __|
- | |__| |_| | (_| | | | | |_) \__ \
- |_____\__,_|\__,_| |_|_|_.__/|___/ */
+/*                                     _
+ _ __ _   _ _ __   __      _____  _ __| | _____ _ __
+| ' _| | | | '_ \  \ \ /\ / / _ \| '__| |/ / _ \ '__|
+| |  | |_| | | | |  \ V  V / (_) | |  |   <  __/ |
+|_|   \__,_|_| |_|   \_/\_/ \___/|_|  |_|\_\___|_| */
 
 /*
- * FIXME: less than ideal, we tonumber the socket into Lua, we shall use the
- * cn_strct as lightuserdata instead
- * @param:        the socket reference
- * @param:        the string reference
- * @param:        current sending offset in the string
- * @return:       string offset after sending
+ * Run the actual application workers, just keep looping through them and see if
+ * something is left to do
  */
-static int
-l_send_chunk (lua_State *L)
+void
+*run_app_thread (void *tid)
 {
-	int         sockfd;
-	const char *data     = NULL;
-	int         length   = 0;
-	int         offset   = 0 ;
+	struct cn_strct *cn;
+	int              id =       *((int*) tid);
 
-	sockfd =  lua_tonumber(L, 1);
-	data   =  lua_tostring(L, 2);
-	length =  lua_strlen  (L, 2 );
+	char *page;
+	time_t now = time(NULL);
+	char date[32];
+	strcpy(date, ctime(&now));
 
-	offset += write( sockfd, data + offset, length - offset );
-	printf("EXECUTE SENDING\n");
-	lua_pushnumber(L, offset);  /* how much did we get done? */
+	while(1) {
+		// monitor
+		pthread_mutex_lock( &wake_worker_mutex );
+		while(q_empty==1) {
+			pthread_cond_wait( &wake_worker_cond, &wake_worker_mutex );
+		}
+		pthread_mutex_unlock( &wake_worker_mutex );
 
-	return 1;
+		// pull job from queue
+		pthread_mutex_lock   ( &pull_job_mutex );
+		queue_poll(&cn);
+		pthread_mutex_unlock ( &pull_job_mutex );
+
+		// dummy application produces a static page
+page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\
+  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\
+<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" >\
+<head>\
+  <title>I'm the Favicon substitute</title>\
+  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\
+</head>\
+<body>\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\
+</body>\
+</html>";
+		snprintf(cn->data_buf_head, RECV_BUFF_LENGTH,
+			HTTP_VERSION" 200 OK\nServer: %s\n"
+			"Content-Type: text/html\n"
+			"Content-Length: %d\n"
+			"Date: %sLast-Modified: %s\n%s"
+			, _Server_version, strlen(page),
+			date, date, page
+		); /* ctime() has a \n on the end */
+		cn->data_buf  = cn->data_buf_head;
+		cn->req_type  = REQSTATE_SEND_FILE;
+
+		/* do the initial send from here so we trigger the select loop */
+		send_file(cn);
+	}
 }
+
+void
+queue_push (struct cn_strct *in)
+{
+	_App_queue[q_tail++] = in;
+	if (q_tail == WORKER_THREADS)
+		q_tail = 0;
+	if (q_tail == q_head)
+		q_full = 1;
+	q_empty = 0;
+	return;
+}
+
+void
+queue_poll (struct cn_strct **cn)
+{
+	*cn = _App_queue[q_head++];
+	if (q_head == WORKER_THREADS)
+		q_head = 0;
+	if (q_head == q_tail)
+		q_empty = 1;
+	q_full = 0;
+	return;
+}
+
 
 // vim: ts=4 sw=4 sts=4 sta tw=80 list
