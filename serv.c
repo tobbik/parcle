@@ -476,7 +476,7 @@ read_request( struct cn_strct *cn )
 	cn->processed_bytes += num_recv;
 	cn->data_buf = cn->data_buf_head + cn->processed_bytes;
 
-	// null terminate the current buffer
+	/* null terminate the current buffer -> overwrite on next read */
 	cn->data_buf_head[cn->processed_bytes] = '\0';
 
 	/* a naive little line parser */
@@ -689,7 +689,7 @@ parse_first_line( struct cn_strct *cn )
 	if (0 == strncasecmp(next, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
 	if (0 == strncasecmp(next, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
 #if DEBUG_VERBOSE==1
-	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d --LUA: %d\n",
+	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d --STATIC: %d\n",
 		slash_cnt, get_cnt, error, cn->is_static);
 #endif
 }
@@ -763,6 +763,7 @@ page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\
 			date, date, page
 		); /* ctime() has a \n on the end */
 		cn->data_buf  = cn->data_buf_head;
+		cn->processed_bytes = strlen(cn->data_buf_head);
 		cn->req_type  = REQSTATE_SEND_FILE;
 
 		/* do the initial send from here so we trigger the select loop */
