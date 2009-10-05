@@ -28,7 +28,7 @@
 /* experimental number */
 #define WORKER_THREADS           10
 #define HTTP_PORT                8000
-#define HTTP_VERSION             "HTTP1.1"
+#define HTTP_VERSION             "HTTP/1.1"
 #define DEBUG_VERBOSE            0
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
@@ -559,9 +559,9 @@ write_head (struct cn_strct *cn)
 		}
 
 		snprintf(buf, sizeof(buf),
-			HTTP_VERSION" 200 OK\nServer: %s\n"
-			"Content-Type: %s\nContent-Length: %ld\n"
-			"Date: %sLast-Modified: %s\n", _Server_version,
+			HTTP_VERSION" 200 OK\nServer: %s\r\n"
+			"Content-Type: %s\r\nContent-Length: %ld\r\n"
+			"Date: %sLast-Modified: %s\r\n", _Server_version,
 			getmimetype(cn->url), (long) stbuf.st_size,
 			date, ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
@@ -785,13 +785,14 @@ page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
 </body>\n\
 </html>\n";
 		snprintf(cn->data_buf_head, RECV_BUFF_LENGTH,
-			HTTP_VERSION" 200 OK\nServer: %s\n"
-			"Content-Type: text/html\n"
-			"Content-Length: %d\n"
-			"Date: %sLast-Modified: %s\n%s"
+			HTTP_VERSION" 200 OK\r\nServer: %s\r\n"
+			"Content-Type: text/html\r\n"
+			"Content-Length: %d\r\n"
+			"Date: %sLast-Modified: %s\r\n%s"
 			, _Server_version, strlen(page),
 			date, date, page
 		); /* ctime() has a \n on the end */
