@@ -33,6 +33,11 @@
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
+/* special cases served from the STATIC_ROOT directory */
+#define FAVICON_URL              "favicon.ico"
+#define FAVICON_URL_LENGTH       11
+#define ROBOTS_URL               "robots.txt"
+#define ROBOTS_URL_LENGTH        10
 
 enum bool
 {
@@ -352,7 +357,7 @@ create_listener(int port)
 
 /*
  * get a socket and form a cn_strct around it
- *  - either pull it of free_conns or acreate one
+ *  - either pull it of free_conns or create one
  *  - add it to the busy_conns
  * */
 static void
@@ -525,18 +530,33 @@ write_head (struct cn_strct *cn)
 	/* check if we request a static file */
 	if (cn->is_static) {
 		cn->url++;              /* eat leading slash */
-		printf("YES, that will be static!\n");
-		file_exists = stat(cn->url, &stbuf);
+		printf("STATIC URL: %s --- COMPARE: %s\n", cn->url, FAVICON_URL);
+		if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH)) {
+			file_exists = stat(STATIC_ROOT"/favicon.ico", &stbuf);
+		}
+		else if (0 == strncasecmp(cn->url, ROBOTS_URL, ROBOTS_URL_LENGTH)) {
+			file_exists = stat(STATIC_ROOT"/robots.txt", &stbuf);
+		}
+		else {
+			file_exists = stat(cn->url, &stbuf);
+		}
 
-		if (file_exists == -1)
-		{
+		if (file_exists == -1) {
 			//send_error(cn, 404);
 			printf("Sorry dude, didn't find the file: %s\n", cn->url);
 			remove_conn_from_list(cn);
 			return;
 		}
 
-		cn->file_desc = open(cn->url, O_RDONLY);
+		if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH)) {
+			cn->file_desc = open(STATIC_ROOT"/favicon.ico", O_RDONLY);
+		}
+		else if (0 == strncasecmp(cn->url, ROBOTS_URL, ROBOTS_URL_LENGTH)) {
+			file_exists = stat(STATIC_ROOT"/robots.txt", &stbuf);
+		}
+		else {
+			cn->file_desc = open(cn->url, O_RDONLY);
+		}
 
 		snprintf(buf, sizeof(buf),
 			HTTP_VERSION" 200 OK\nServer: %s\n"
@@ -692,6 +712,10 @@ parse_first_line( struct cn_strct *cn )
 	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d --STATIC: %d\n",
 		slash_cnt, get_cnt, error, cn->is_static);
 #endif
+	if (0 == strncasecmp(cn->url+1, FAVICON_URL, FAVICON_URL_LENGTH) ||
+	    0 == strncasecmp(cn->url+1, ROBOTS_URL, ROBOTS_URL_LENGTH) ) {
+		cn->is_static=true;
+	}
 }
 
 static const char
@@ -704,6 +728,8 @@ static const char
 		return "text/css";
 	else if (strstr(name, ".js"))
 		return "text/javascript";
+	else if (strstr(name, ".ico"))
+		return "image/vnd.microsoft.icon";
 	else
 		return "application/octet-stream";
 }
