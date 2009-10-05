@@ -29,7 +29,7 @@
 #define WORKER_THREADS           10
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP1.1"
-#define DEBUG_VERBOSE            1
+#define DEBUG_VERBOSE            0
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
@@ -613,13 +613,16 @@ send_file (struct cn_strct *cn)
 			cn->processed_bytes, 0);
 
 #if DEBUG_VERBOSE == 1
-		printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes);
+		printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes-rv);
 #endif
 		if (rv < 0) {
 			remove_conn_from_list(cn);
 		}
-		else if (rv == cn->processed_bytes && cn->is_static) {
-			cn->req_state = REQSTATE_BUFF_FILE;
+		else if (rv == cn->processed_bytes) {
+			if (cn->is_static)
+				cn->req_state = REQSTATE_BUFF_FILE;
+			else
+				remove_conn_from_list(cn);
 		}
 		else if (0 == rv) {
 			/* Do nothing */
