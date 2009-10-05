@@ -132,6 +132,7 @@ static void *run_app_thread         ( void *tid );
 void queue_push (struct cn_strct *in);
 void queue_poll (struct cn_strct **cn);
 
+/* ####################### STARTING THE ACTUAL IMPLEMENTATION ############## */
 /* clean up after ourselves */
 static void
 clean_on_quit(int sig)
@@ -530,7 +531,6 @@ write_head (struct cn_strct *cn)
 	/* check if we request a static file */
 	if (cn->is_static) {
 		cn->url++;              /* eat leading slash */
-		printf("STATIC URL: %s --- COMPARE: %s\n", cn->url, FAVICON_URL);
 		if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH)) {
 			file_exists = stat(STATIC_ROOT"/favicon.ico", &stbuf);
 		}
@@ -571,7 +571,6 @@ write_head (struct cn_strct *cn)
 		cn->req_state = REQSTATE_BUFF_FILE;
 	}
 	else {
-		printf("WE ARE IN DYNO ENV: %s\n", cn->url);
 		/* enqueue this connection to the _App_queue */
 		pthread_mutex_lock( &pull_job_mutex );
 		queue_push(cn);
@@ -772,17 +771,26 @@ void
 		pthread_mutex_unlock ( &pull_job_mutex );
 
 		// dummy application produces a static page
-page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\
-  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\
-<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" >\
-<head>\
-  <title>I'm the Favicon substitute</title>\
-  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\
-</head>\
-<body>\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\
-</body>\
-</html>";
+page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\
+  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\n\
+<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" >\n\
+<head>\n\
+  <title>I'm the Favicon substitute</title>\n\
+  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
+</head>\n\
+<body>\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+</body>\n\
+</html>\n";
 		snprintf(cn->data_buf_head, RECV_BUFF_LENGTH,
 			HTTP_VERSION" 200 OK\nServer: %s\n"
 			"Content-Type: text/html\n"
