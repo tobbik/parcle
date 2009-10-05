@@ -587,12 +587,14 @@ void
 buff_file (struct cn_strct *cn)
 {
 	int rv = read(cn->file_desc, cn->data_buf_head, RECV_BUFF_LENGTH);
+
 #if DEBUG_VERBOSE == 1
 	printf("\n\nbuffered:%d\n", rv);
 #endif
-	cn->data_buf    =    cn->data_buf_head;
 
-	if (rv <= 0) {
+	cn->data_buf = cn->data_buf_head;
+
+	if (0 >= rv) {
 		close(cn->file_desc);
 		cn->file_desc = -1;
 		remove_conn_from_list(cn);
@@ -606,31 +608,25 @@ buff_file (struct cn_strct *cn)
 void
 send_file (struct cn_strct *cn)
 {
-	int rv;
-	//if (cn->is_static) {
-		rv = send (cn->net_socket, cn->data_buf,
-			cn->processed_bytes, 0);
+	int rv = send (cn->net_socket, cn->data_buf,
+		cn->processed_bytes, 0);
 
 #if DEBUG_VERBOSE == 1
-		printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes-rv);
+	printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes-rv);
 #endif
-		if (rv < 0) {
-			remove_conn_from_list(cn);
-		}
-		else if (rv == cn->processed_bytes) {
-			if (cn->is_static)
-				cn->req_state = REQSTATE_BUFF_FILE;
-			else
-				remove_conn_from_list(cn);
-		}
-		else if (0 == rv) {
-			/* Do nothing */
-		}
-		else {
-			cn->data_buf = cn->data_buf + rv;
-			cn->processed_bytes -= rv;
-		}
-	//}
+	if (0 > rv || !cn->is_static) {
+		remove_conn_from_list(cn);
+	}
+	else if (cn->processed_bytes == rv) {
+		cn->req_state = REQSTATE_BUFF_FILE;
+	}
+	else if (0 == rv) {
+		/* Do nothing */
+	}
+	else {
+		cn->data_buf = cn->data_buf + rv;
+		cn->processed_bytes -= rv;
+	}
 }
 
 /*___   _    ____  ____  _____   _   _ _____ _     ____  _____ ____  ____
