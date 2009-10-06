@@ -39,6 +39,7 @@
 #define ROBOTS_URL               "robots.txt"
 #define ROBOTS_URL_LENGTH        10
 
+/* ########################### DATA STRUCTURES ############################# */
 enum bool
 {
 	false,
@@ -91,24 +92,7 @@ struct cn_strct
 	enum    bool          is_static;
 };
 
-/* global variables */
-struct cn_strct     *_Free_conns;       /* idleing conns */
-struct cn_strct     *_Busy_conns;       /* conns bound to actions */
-const char * const   _Server_version = "testserver/poc";
-int                  _Master_sock;      /* listening master socket */
-
-/* we could wrap that in a structure but then that's boring .. for now */
-struct cn_strct     *_App_queue[WORKER_THREADS];
-int q_head;
-int q_tail;
-int q_full;
-int q_empty;
-pthread_mutex_t wake_worker_mutex  = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t pull_job_mutex     = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t  wake_worker_cond   = PTHREAD_COND_INITIALIZER;
-pthread_t            _Workers[WORKER_THREADS]; /* used to clean up */
-pthread_t            threads[WORKER_THREADS];
-
+/* ######################## FUNCTION DECLARATIONS ########################## */
 /* Forward declaration of some connection helpers */
 static int   create_listener        ( int port );
 static void  handle_new_conn        ( int listenfd );
@@ -131,6 +115,24 @@ static void *run_app_thread         ( void *tid );
 /* Forward declaration of queue related functions */
 void queue_push (struct cn_strct *in);
 void queue_poll (struct cn_strct **cn);
+
+/* ######################## GLOBAL VARIABLES ############################### */
+struct cn_strct     *_Free_conns;       /* idleing conns */
+struct cn_strct     *_Busy_conns;       /* conns bound to actions */
+const char * const   _Server_version = "testserver/poc";
+int                  _Master_sock;      /* listening master socket */
+
+/* we could wrap that in a structure but then that's boring .. for now */
+struct cn_strct     *_App_queue[WORKER_THREADS];
+int q_head;
+int q_tail;
+int q_full;
+int q_empty;
+pthread_mutex_t wake_worker_mutex  = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t pull_job_mutex     = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  wake_worker_cond   = PTHREAD_COND_INITIALIZER;
+pthread_t            _Workers[WORKER_THREADS]; /* used to clean up */
+
 
 /* ####################### STARTING THE ACTUAL IMPLEMENTATION ############## */
 /* clean up after ourselves */
