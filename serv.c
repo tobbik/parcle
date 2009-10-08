@@ -16,6 +16,10 @@
 #include <fcntl.h>
 #include <time.h>
 
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+
 /* A few constants */
 #define BACK_LOG                 5
 
@@ -111,6 +115,13 @@ static const char  *getmimetype     ( const char *name );
 
 /* Forward declaration of app bound methods */
 static void *run_app_thread         ( void *tid );
+static int   l_buffer_output        ( lua_State *L );
+
+/* set up the Lua bindings for C-functions */
+static const struct luaL_reg app_lib [] = {
+	{"commit",   l_buffer_output},
+	{NULL,       NULL}
+};
 
 /* Forward declaration of queue related functions */
 void queue_push (struct cn_strct *in);
@@ -749,11 +760,13 @@ void
 {
 	struct cn_strct *cn;
 	int              id =       *((int*) tid);
+	int              count = 0;
 
-	char *page;
-	time_t now = time(NULL);
-	char date[32];
-	strcpy(date, ctime(&now));
+	// thread local lua state
+	lua_State *L = lua_open();
+	luaL_openlibs (L);
+	luaL_openlib  (L, "parcle", app_lib, 0);
+	luaL_dofile   (L, "app/_init.lua");
 
 	while(1) {
 		// monitor
@@ -768,36 +781,11 @@ void
 		queue_poll(&cn);
 		pthread_mutex_unlock ( &pull_job_mutex );
 
-		// dummy application produces a static page
-page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\
-  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\n\
-<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" >\n\
-<head>\n\
-  <title>I'm the Favicon substitute</title>\n\
-  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
-</head>\n\
-<body>\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-</body>\n\
-</html>\n";
-		snprintf(cn->data_buf_head, RECV_BUFF_LENGTH,
-			HTTP_VERSION" 200 OK\r\nServer: %s\r\n"
-			"Content-Type: text/html\r\n"
-			"Content-Length: %d\r\n"
-			"Date: %sLast-Modified: %s\r\n%s"
-			, _Server_version, strlen(page),
-			date, date, page
-		); /* ctime() has a \n on the end */
+		/* Execute the lua function we want */
+		lua_getglobal(L, "test");
+		lua_pushlightuserdata(L, (void*) cn);
+		lua_call(L, 1, 0);
+
 		cn->data_buf  = cn->data_buf_head;
 		cn->processed_bytes = strlen(cn->data_buf_head);
 		cn->req_type  = REQSTATE_SEND_FILE;
@@ -831,5 +819,31 @@ queue_poll (struct cn_strct **cn)
 	return;
 }
 
+/*_                  _ _ _
+ | |   _   _  __ _  | (_) |__  ___
+ | |  | | | |/ _` | | | | '_ \/ __|
+ | |__| |_| | (_| | | | | |_) \__ \
+ |_____\__,_|\__,_| |_|_|_.__/|___/
+
+ from here we deal with C functions that will be exposed to Lua as part of the
+ par[ck]le library (aka Lua module)*/
+
+/*
+ * FIXME: less than ideal, we tonumber the socket into Lua, we shall use the
+ * cn_strct as lightuserdata instead
+ * @param:        the connection pointer
+ * @param:        the string reference
+ */
+static int
+l_buffer_output (lua_State *L)
+{
+	//const char      *data   = NULL;
+	struct cn_strct *cn     = NULL;
+
+	cn     =  (struct cn_strct*) lua_touserdata(L, 1);
+	strncpy(cn->data_buf_head, lua_tostring(L,2), lua_strlen  (L, 2 ));
+
+	return 0;
+}
 
 // vim: ts=4 sw=4 sts=4 sta tw=80 list
