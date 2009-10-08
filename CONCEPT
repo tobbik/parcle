@@ -36,7 +36,19 @@ Plans:
 
 Order of processing:
 
-	1. read_request()      -> put incoming bytes into the main buffer
-	 - when reached second line interpret the first
+    1. read_request()      -> put incoming bytes into the main buffer  
+      - when reached second line interpret the first
+
+
+Architectural conondrum:
+ - if we write from the Lua process directly we safe our self to buffer the
+   output in a C char *buffer which must be memory allocated and basically is a
+   1:1 copy of the output of the application
+ - if we write from buffer we can hook that nicely into the asynchronous
+   architecture and can return the worker thread to the pool where it can start
+   to process new requests, but how do we kickstart the actual delivery? AKA.
+   how 
+I guess that comes down to speed vs memory
+
 
 # vim: ts=4 sw=4 st=4 sta tw=80
