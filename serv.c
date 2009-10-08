@@ -246,7 +246,7 @@ main(int argc, char *argv[])
 		// clean socket lists
 		FD_ZERO(&rfds);
 		FD_ZERO(&wfds);
-		rnum = wnum = -1;
+		wnum = -1;
 
 		// Add master listener to reading sockets
 		FD_SET(_Master_sock, &rfds);
