@@ -142,8 +142,7 @@ int q_empty;
 pthread_mutex_t wake_worker_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t pull_job_mutex     = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  wake_worker_cond   = PTHREAD_COND_INITIALIZER;
-pthread_t            _Workers[WORKER_THREADS]; /* used to clean up */
-
+pthread_t       _Workers[WORKER_THREADS]; /* used to clean up */
 
 /* ####################### STARTING THE ACTUAL IMPLEMENTATION ############## */
 /* clean up after ourselves */
@@ -572,7 +571,7 @@ write_head (struct cn_strct *cn)
 		}
 
 		snprintf(buf, sizeof(buf),
-			HTTP_VERSION" 200 OK\nServer: %s\r\n"
+			HTTP_VERSION" 200 OK\r\nServer: %s\r\n"
 			"Content-Type: %s\r\nContent-Length: %ld\r\n"
 			"Date: %sLast-Modified: %s\r\n", _Server_version,
 			getmimetype(cn->url), (long) stbuf.st_size,
@@ -760,7 +759,6 @@ void
 {
 	struct cn_strct *cn;
 	int              id =       *((int*) tid);
-	int              count = 0;
 
 	// thread local lua state
 	lua_State *L = lua_open();
