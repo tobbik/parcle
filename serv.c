@@ -213,6 +213,13 @@ main(int argc, char *argv[])
 		_Free_conns->next = tp;
 	}
 
+	/* create the master listener */
+	if ((_Master_sock = create_listener(HTTP_PORT)) == -1) {
+		fprintf(stderr, "ERR: Couldn't bind to port %d\n",
+				HTTP_PORT);
+		exit(1);
+	}
+
 	/* set up queue */
 	q_empty = 1;
 	q_full  = 0;
@@ -224,15 +231,6 @@ main(int argc, char *argv[])
 	 */
 	for(i = 0; i < WORKER_THREADS; i++) {
 		pthread_create(&_Workers[i], NULL, &run_app_thread, (void *) &i);
-		//pthread_create(&threads[i], NULL, &run_app_thread, (void *) &i);
-		//pthread_create(&threads[i], NULL, &t_funct,        (void *) &i);
-	}
-
-	/* create the master listener */
-	if ((_Master_sock = create_listener(HTTP_PORT)) == -1) {
-		fprintf(stderr, "ERR: Couldn't bind to port %d\n",
-				HTTP_PORT);
-		exit(1);
 	}
 
 #if DEBUG_VERBOSE == 1
