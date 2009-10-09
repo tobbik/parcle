@@ -33,7 +33,7 @@
 #define WORKER_THREADS           10
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP/1.1"
-#define DEBUG_VERBOSE            1
+#define DEBUG_VERBOSE            0
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
@@ -569,11 +569,17 @@ write_head (struct cn_strct *cn)
 		}
 
 		snprintf(buf, sizeof(buf),
-			HTTP_VERSION" 200 OK\r\nServer: %s\r\n"
-			"Content-Type: %s\r\nContent-Length: %ld\r\n"
-			"Date: %sLast-Modified: %s\r\n", _Server_version,
-			getmimetype(cn->url), (long) stbuf.st_size,
-			date, ctime(&stbuf.st_mtime)
+			HTTP_VERSION" 200 OK\r\n"
+			"Server: %s\r\n"
+			"Content-Type: %s\r\n"
+			"Content-Length: %ld\r\n\r\n",
+			//"Date: %s"
+			//"Last-Modified: %s\r\n",
+			_Server_version,
+			getmimetype(cn->url),
+			(long) stbuf.st_size
+			//date,
+			//ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
 		send(cn->net_socket, buf, strlen(buf), 0);
 
