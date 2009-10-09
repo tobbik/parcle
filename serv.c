@@ -33,7 +33,7 @@
 #define WORKER_THREADS           10
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP/1.1"
-#define DEBUG_VERBOSE            0
+#define DEBUG_VERBOSE            1
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
@@ -565,7 +565,7 @@ write_head (struct cn_strct *cn)
 			cn->file_desc = open(STATIC_ROOT"/favicon.ico", O_RDONLY);
 		}
 		else if (0 == strncasecmp(cn->url, ROBOTS_URL, ROBOTS_URL_LENGTH)) {
-			file_exists = stat(STATIC_ROOT"/robots.txt", &stbuf);
+			cn->file_desc = open(STATIC_ROOT"/robots.txt", O_RDONLY);
 		}
 		else {
 			cn->file_desc = open(cn->url, O_RDONLY);
