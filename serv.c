@@ -132,6 +132,8 @@ struct cn_strct     *_Free_conns;       /* idleing conns */
 struct cn_strct     *_Busy_conns;       /* conns bound to actions */
 const char * const   _Server_version = "testserver/poc";
 int                  _Master_sock;      /* listening master socket */
+time_t               _Last_loop;        /* marks the last run of select */
+char                 _Master_date[32];  /* the formatted date */
 
 /* we could wrap that in a structure but then that's boring .. for now */
 struct cn_strct     *_App_queue[WORKER_THREADS];
@@ -195,6 +197,15 @@ main(int argc, char *argv[])
 	struct cn_strct    *tp, *to;
 	int                 rnum, wnum, readsocks;
 	int                 i;
+	struct    tm       *tm_struct;
+
+	/* initialize the masterdate we update only every second */
+	_Last_loop = time(NULL);
+	tm_struct  = gmtime(&_Last_loop);
+	strftime( _Master_date, 32, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
+#if DEBUG_VERBOSE == 1
+	printf("STARTED AT: %s\n", _Master_date);
+#endif
 
 	signal(SIGQUIT, die);
 	signal(SIGTERM, die);
@@ -532,11 +543,19 @@ write_head (struct cn_strct *cn)
 {
 	char buf[RECV_BUFF_LENGTH];
 	struct stat stbuf;
-	time_t now = time(NULL);
-	char date[32];
 	int file_exists;
+	time_t   now = time(NULL);
+	struct tm  *tm_struct;
 
-	strcpy(date, ctime(&now));
+	/* prepare the global date string */
+	now = time(NULL);
+	if (now-_Last_loop>0) {
+		_Last_loop = now;
+		tm_struct = gmtime(&_Last_loop);
+		//Sun, 06 Nov 1994 08:49:37 GMT
+		strftime( _Master_date, 32, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
+		printf("TIMESTAMP changed to: %s\n", _Master_date);
+	}
 
 	/* check if we request a static file */
 	if (cn->is_static) {
@@ -572,13 +591,13 @@ write_head (struct cn_strct *cn)
 			HTTP_VERSION" 200 OK\r\n"
 			"Server: %s\r\n"
 			"Content-Type: %s\r\n"
-			"Content-Length: %ld\r\n\r\n",
-			//"Date: %s"
+			"Content-Length: %ld\r\n"
+			"Date: %s\r\n\r\n",
 			//"Last-Modified: %s\r\n",
 			_Server_version,
 			getmimetype(cn->url),
-			(long) stbuf.st_size
-			//date,
+			(long) stbuf.st_size,
+			_Master_date
 			//ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
 		send(cn->net_socket, buf, strlen(buf), 0);
