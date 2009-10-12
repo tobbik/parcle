@@ -133,7 +133,7 @@ struct cn_strct     *_Busy_conns;       /* conns bound to actions */
 const char * const   _Server_version = "testserver/poc";
 int                  _Master_sock;      /* listening master socket */
 time_t               _Last_loop;        /* marks the last run of select */
-char                 _Master_date[32];  /* the formatted date */
+char                 _Master_date[30];  /* the formatted date */
 
 /* we could wrap that in a structure but then that's boring .. for now */
 struct cn_strct     *_App_queue[WORKER_THREADS];
@@ -553,8 +553,7 @@ write_head (struct cn_strct *cn)
 		_Last_loop = now;
 		tm_struct = gmtime(&_Last_loop);
 		//Sun, 06 Nov 1994 08:49:37 GMT
-		strftime( _Master_date, 32, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
-		printf("TIMESTAMP changed to: %s\n", _Master_date);
+		strftime( _Master_date, 30, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
 	}
 
 	/* check if we request a static file */
