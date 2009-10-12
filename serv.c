@@ -76,7 +76,7 @@ enum http_version
 /* contain all metadata regarding one connection */
 struct cn_strct
 {
-	struct  cn_strct     *next;
+	struct  cn_strct     *c_next;
 	enum    req_states    req_state;
 	int                   net_socket;
 	int                   file_desc;
@@ -155,14 +155,14 @@ clean_on_quit(int sig)
 	int i;
 
 	while (NULL != _Free_conns) {
-		tp = _Free_conns->next;
+		tp = _Free_conns->c_next;
 		free(_Free_conns->data_buf_head);
 		free(_Free_conns);
 		_Free_conns = tp;
 	}
 
 	while (NULL != _Busy_conns) {
-		tp = _Busy_conns->next;
+		tp = _Busy_conns->c_next;
 		free(_Busy_conns->data_buf_head);
 		close(_Busy_conns->net_socket);
 		free(_Busy_conns);
@@ -177,7 +177,6 @@ clean_on_quit(int sig)
 		//pthread_kill(&_Workers[i], SIGTERM);
 		;
 	}
-
 
 	exit(0);
 }
@@ -221,7 +220,7 @@ main(int argc, char *argv[])
 		_Free_conns = (struct cn_strct *) calloc(1, sizeof(struct cn_strct));
 		_Free_conns->data_buf_head =
 			(char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
-		_Free_conns->next = tp;
+		_Free_conns->c_next = tp;
 	}
 
 	/* create the master listener */
@@ -281,7 +280,7 @@ main(int argc, char *argv[])
 				FD_SET(tp->net_socket, &wfds);
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
-			tp = tp->next;
+			tp = tp->c_next;
 		}
 
 		readsocks = select(
@@ -303,7 +302,7 @@ main(int argc, char *argv[])
 
 		while (readsocks > 0 && tp != NULL) {
 			to = tp;
-			tp = tp->next;
+			tp = tp->c_next;
 
 			if (REQSTATE_READ_HEAD == to->req_state &&
 			  FD_ISSET(to->net_socket, &rfds)) {
@@ -394,7 +393,7 @@ add_conn_to_list(int sd, char *ip)
 	}
 	else {
 		tp = _Free_conns;
-		_Free_conns = tp->next;
+		_Free_conns = tp->c_next;
 		/* TODO: For Later, if we end up reallocing for larger buffers we need
 		 * to keep track of how much we need to null over upon reuse
 		 */
@@ -404,7 +403,7 @@ add_conn_to_list(int sd, char *ip)
 	tp->data_buf        = tp->data_buf_head;
 
 	/* Make it part of the busy connection list */
-	tp->next = _Busy_conns;
+	tp->c_next = _Busy_conns;
 	_Busy_conns = tp;
 	tp->net_socket = sd;
 
@@ -434,19 +433,19 @@ remove_conn_from_list(struct cn_strct *cn)
 
 	tp = _Busy_conns;
 
-	if (tp == NULL || cn == NULL) 
+	if (tp == NULL || cn == NULL)
 		shouldret = 1;
-	else if (tp == cn) 
-		_Busy_conns = tp->next;
+	else if (tp == cn)
+		_Busy_conns = tp->c_next;
 	else {
 		while (tp != NULL) {
-			if (tp->next == cn) {
-				tp->next = (tp->next)->next;
+			if (tp->c_next == cn) {
+				tp->c_next = (tp->c_next)->c_next;
 				shouldret = 0;
 				break;
 			}
 
-			tp = tp->next;
+			tp = tp->c_next;
 			shouldret = 1;
 		}
 	}
@@ -455,7 +454,7 @@ remove_conn_from_list(struct cn_strct *cn)
 		return;
 
 	/* If we did, add it to the free list */
-	cn->next = _Free_conns;
+	cn->c_next = _Free_conns;
 	_Free_conns = cn;
 
 	/* Close it all down */
