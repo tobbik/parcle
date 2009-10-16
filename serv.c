@@ -16,9 +16,11 @@
 #include <fcntl.h>
 #include <time.h>
 
+#ifdef HAVE_LUA
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
+#endif
 
 /* A few constants */
 #define BACK_LOG                 5
@@ -82,15 +84,15 @@ struct cn_strct
 	int                   file_desc;
 
 	/* incoming buffer */
-	char                 *data_buf_head;      /* points to start, always */
-	char                 *data_buf;           /* points to current spot */
+	char                 *data_buf_head;    /* points to start, always */
+	char                 *data_buf;         /* points to current spot */
 	int                   processed_bytes;
 	/* inc buffer state */
 	int                   line_count;
 	/* head information */
 	enum    req_types     req_type;
 	char                 *url;
-	char                 *pay_load;            /* either GET or POST data */
+	char                 *pay_load;         /* either GET or POST data */
 	enum    http_version  http_prot;
 
 	enum    bool          is_static;
@@ -115,6 +117,7 @@ static const char  *getmimetype     ( const char *name );
 
 /* Forward declaration of app bound methods */
 static void *run_app_thread         ( void *tid );
+#ifdef HAVE_LUA
 static int   l_buffer_output        ( lua_State *L );
 
 /* set up the Lua bindings for C-functions */
@@ -126,6 +129,7 @@ static const struct luaL_reg app_lib [] = {
 /* Forward declaration of queue related functions */
 void queue_push (struct cn_strct *in);
 void queue_poll (struct cn_strct **cn);
+#endif
 
 /* ######################## GLOBAL VARIABLES ############################### */
 struct cn_strct     *_Free_conns;       /* idleing conns */
@@ -780,12 +784,17 @@ void
 {
 	struct cn_strct *cn;
 	int              id =       *((int*) tid);
+#ifndef HAVE_LUA
+	char            *page;
+#endif
 
+#ifdef HAVE_LUA
 	// thread local lua state
 	lua_State *L = lua_open();
 	luaL_openlibs (L);
 	luaL_openlib  (L, "parcle", app_lib, 0);
 	luaL_dofile   (L, "app/_init.lua");
+#endif
 
 	while(1) {
 		// monitor
@@ -800,10 +809,44 @@ void
 		queue_poll(&cn);
 		pthread_mutex_unlock ( &pull_job_mutex );
 
+#ifdef HAVE_LUA
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
 		lua_pushlightuserdata(L, (void*) cn);
 		lua_call(L, 1, 0);
+#else
+		page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\
+  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\n\
+<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" >\n\
+<head>\n\
+  <title>I'm the Favicon substitute</title>\n\
+  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
+</head>\n\
+<body>\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+</body>\n\
+</html>\n";
+		snprintf(cn->data_buf_head, RECV_BUFF_LENGTH,
+			HTTP_VERSION" 200 OK\r\n"
+			"Server: %s\r\n"
+			"Content-Type: text/html\r\n"
+			"Content-Length: %d\r\n"
+			"Date: %s\r\n"
+			"Last-Modified: %s\r\n\r\n%s"
+			, _Server_version, strlen(page),
+			_Master_date, _Master_date, page
+		);
+#endif
 
 		cn->data_buf  = cn->data_buf_head;
 		cn->processed_bytes = strlen(cn->data_buf_head);
@@ -838,6 +881,7 @@ queue_poll (struct cn_strct **cn)
 	return;
 }
 
+#ifdef HAVE_LUA
 /*_                  _ _ _
  | |   _   _  __ _  | (_) |__  ___
  | |  | | | |/ _` | | | | '_ \/ __|
@@ -864,5 +908,6 @@ l_buffer_output (lua_State *L)
 
 	return 0;
 }
+#endif
 
 // vim: ts=4 sw=4 sts=4 sta tw=80 list
