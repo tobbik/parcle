@@ -32,7 +32,7 @@
 
 #define INITIAL_CONNS            5
 /* experimental number */
-#define WORKER_THREADS           10
+#define WORKER_THREADS           4
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP/1.1"
 #define DEBUG_VERBOSE            0
@@ -78,7 +78,8 @@ enum http_version
 /* contain all metadata regarding one connection */
 struct cn_strct
 {
-	struct  cn_strct     *c_next;
+	struct  cn_strct     *c_next;           /* links to next cn */
+	struct  cn_strct     *q_prev;           /* links to previous cn in queue */
 	enum    req_states    req_state;
 	int                   net_socket;
 	int                   file_desc;
@@ -125,10 +126,6 @@ static const struct luaL_reg app_lib [] = {
 	{"commit",   l_buffer_output},
 	{NULL,       NULL}
 };
-
-/* Forward declaration of queue related functions */
-void queue_push (struct cn_strct *in);
-void queue_poll (struct cn_strct **cn);
 #endif
 
 /* ######################## GLOBAL VARIABLES ############################### */
@@ -140,11 +137,10 @@ time_t               _Last_loop;        /* marks the last run of select */
 char                 _Master_date[30];  /* the formatted date */
 
 /* we could wrap that in a structure but then that's boring .. for now */
-struct cn_strct     *_App_queue[WORKER_THREADS];
-int q_head;
-int q_tail;
-int q_full;
-int q_empty;
+struct cn_strct     *_Queue_head;
+struct cn_strct     *_Queue_tail;
+enum   bool          _Queue_empty;
+int                  _Queue_count;
 pthread_mutex_t wake_worker_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t pull_job_mutex     = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  wake_worker_cond   = PTHREAD_COND_INITIALIZER;
@@ -235,14 +231,11 @@ main(int argc, char *argv[])
 	}
 
 	/* set up queue */
-	q_empty = 1;
-	q_full  = 0;
-	q_head  = 0;
-	q_tail  = 0;
+	_Queue_tail = _Queue_head = NULL;
+	_Queue_empty = true;
+	_Queue_count = 0;
 
-	/* create workers for application
-	 * initialize Lua and load base libs for the app engine
-	 */
+	/* create workers for application */
 	for(i = 0; i < WORKER_THREADS; i++) {
 		pthread_create(&_Workers[i], NULL, &run_app_thread, (void *) &i);
 	}
@@ -410,6 +403,7 @@ add_conn_to_list(int sd, char *ip)
 	tp->c_next = _Busy_conns;
 	_Busy_conns = tp;
 	tp->net_socket = sd;
+	tp->q_prev     = NULL;
 
 	/* Pre/Re-set initial variables */
 	tp->req_state = REQSTATE_READ_HEAD;
@@ -610,7 +604,17 @@ write_head (struct cn_strct *cn)
 	else {
 		/* enqueue this connection to the _App_queue */
 		pthread_mutex_lock( &pull_job_mutex );
-		queue_push(cn);
+		if (NULL == _Queue_head && NULL == _Queue_tail) {
+			_Queue_tail = _Queue_head = cn;
+			_Queue_empty = false;
+			_Queue_count = 1;
+		}
+		else {
+			_Queue_tail->q_prev = cn;
+			_Queue_tail = cn;
+			//_Queue_tail->q_prev = NULL;
+			_Queue_count++;
+		}
 		pthread_mutex_unlock( &pull_job_mutex );
 
 		cn->req_state = REQSTATE_PROC_APP;
@@ -783,7 +787,9 @@ void
 *run_app_thread (void *tid)
 {
 	struct cn_strct *cn;
+	struct cn_strct *cn_t;
 	int              id =       *((int*) tid);
+	int              sent;
 #ifndef HAVE_LUA
 	char            *page;
 #endif
@@ -799,14 +805,33 @@ void
 	while(1) {
 		// monitor
 		pthread_mutex_lock( &wake_worker_mutex );
-		while(q_empty==1) {
+		while(_Queue_empty == true) {
 			pthread_cond_wait( &wake_worker_cond, &wake_worker_mutex );
 		}
 		pthread_mutex_unlock( &wake_worker_mutex );
 
-		// pull job from queue
+		/* pull job from queue */
 		pthread_mutex_lock   ( &pull_job_mutex );
-		queue_poll(&cn);
+		if (NULL == _Queue_head && NULL == _Queue_tail) {
+			printf("QUEUE MISSED!!\n");
+			_Queue_empty = true;
+			pthread_mutex_unlock ( &pull_job_mutex );
+			continue;
+		}
+
+		cn   = _Queue_head;
+		cn_t = cn->q_prev;
+		_Queue_head = cn_t;
+		/* we popped the last cn */
+		if (NULL == _Queue_head) {
+			_Queue_tail = _Queue_head;
+			_Queue_empty = true;
+		};
+		if (_Queue_count > 1)
+			printf("EMPTY: %d --- Left in Queue AFTER REMOVAL: %d\n",
+				_Queue_empty, --(_Queue_count)
+			);
+
 		pthread_mutex_unlock ( &pull_job_mutex );
 
 #ifdef HAVE_LUA
@@ -823,6 +848,79 @@ void
   <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
 </head>\n\
 <body>\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
@@ -855,30 +953,6 @@ void
 		/* do the initial send from here so we trigger the select loop */
 		send_file(cn);
 	}
-}
-
-void
-queue_push (struct cn_strct *in)
-{
-	_App_queue[q_tail++] = in;
-	if (q_tail == WORKER_THREADS)
-		q_tail = 0;
-	if (q_tail == q_head)
-		q_full = 1;
-	q_empty = 0;
-	return;
-}
-
-void
-queue_poll (struct cn_strct **cn)
-{
-	*cn = _App_queue[q_head++];
-	if (q_head == WORKER_THREADS)
-		q_head = 0;
-	if (q_head == q_tail)
-		q_empty = 1;
-	q_full = 0;
-	return;
 }
 
 #ifdef HAVE_LUA
