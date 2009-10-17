@@ -400,14 +400,14 @@ add_conn_to_list(int sd, char *ip)
 	tp->data_buf        = tp->data_buf_head;
 
 	/* Make it part of the busy connection list */
-	tp->c_next = _Busy_conns;
-	_Busy_conns = tp;
+	tp->c_next     = _Busy_conns;
+	_Busy_conns    = tp;
 	tp->net_socket = sd;
 	tp->q_prev     = NULL;
 
 	/* Pre/Re-set initial variables */
-	tp->req_state = REQSTATE_READ_HEAD;
-	tp->req_type  = REQTYPE_GET;
+	tp->req_state        = REQSTATE_READ_HEAD;
+	tp->req_type         = REQTYPE_GET;
 	tp->processed_bytes  = 0;
 	tp->line_count       = 0;
 	tp->pay_load         = '\0';
@@ -538,14 +538,13 @@ read_request( struct cn_strct *cn )
 void
 write_head (struct cn_strct *cn)
 {
-	char buf[RECV_BUFF_LENGTH];
-	struct stat stbuf;
-	int file_exists;
-	time_t   now = time(NULL);
-	struct tm  *tm_struct;
+	char       buf[RECV_BUFF_LENGTH];
+	struct     stat stbuf;
+	int        file_exists;
+	time_t     now = time(NULL);
+	struct tm *tm_struct;
 
 	/* prepare the global date string */
-	now = time(NULL);
 	if (now-_Last_loop>0) {
 		_Last_loop = now;
 		tm_struct = gmtime(&_Last_loop);
