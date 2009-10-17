@@ -657,11 +657,14 @@ send_file (struct cn_strct *cn)
 #if DEBUG_VERBOSE == 1
 	printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes-rv);
 #endif
-	if (0 > rv || !cn->is_static) {
+	if (0 > rv) {
 		remove_conn_from_list(cn);
 	}
 	else if (cn->processed_bytes == rv) {
-		cn->req_state = REQSTATE_BUFF_FILE;
+		if (cn->is_static)
+			cn->req_state = REQSTATE_BUFF_FILE;
+		else
+			remove_conn_from_list(cn);
 	}
 	else if (0 == rv) {
 		/* Do nothing */
