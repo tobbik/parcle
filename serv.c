@@ -417,9 +417,12 @@ add_conn_to_list(int sd, char *ip)
 static void
 handle_new_conn(int listen_sd)
 {
+	int x;
 	struct sockaddr_in their_addr;
 	socklen_t tp = sizeof(struct sockaddr_in);
 	int connfd = accept(listen_sd, (struct sockaddr *)&their_addr, &tp);
+	x = fcntl(connfd, F_GETFL, 0);              /* Get socket flags */
+	fcntl(connfd, F_SETFL, x | O_NONBLOCK);     /* Add non-blocking flag */
 	add_conn_to_list(connfd, inet_ntoa(their_addr.sin_addr));
 }
 
