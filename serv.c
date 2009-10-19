@@ -823,15 +823,17 @@ void
 			pthread_mutex_unlock ( &pull_job_mutex );
 			continue;
 		}
-
-		cn   = _Queue_head;
-		cn_t = cn->q_prev;
-		_Queue_head = cn_t;
-		/* we popped the last cn */
-		if (NULL == _Queue_head) {
-			_Queue_tail = _Queue_head;
+		else if (NULL == _Queue_head->q_prev) {
+			cn   =   _Queue_head;
+			_Queue_head  = NULL;
+			_Queue_tail  = NULL;
 			_Queue_empty = true;
-		};
+		}
+		else {
+			cn   = _Queue_head;
+			cn_t = cn->q_prev;
+			_Queue_head = cn_t;
+		}
 		if (_Queue_count > 1)
 			printf("EMPTY: %d --- Left in Queue AFTER REMOVAL: %d\n",
 				_Queue_empty, --(_Queue_count)
