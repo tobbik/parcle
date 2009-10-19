@@ -904,7 +904,7 @@ void
 			HTTP_VERSION" 200 OK\r\n"
 			"Server: %s\r\n"
 			"Content-Type: text/html\r\n"
-			"Content-Length: %d\r\n"
+			"Content-Length: %Zd\r\n"
 			"Date: %s\r\n"
 			"Last-Modified: %s\r\n\r\n%s"
 			, _Server_version, strlen(page),
