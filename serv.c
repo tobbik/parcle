@@ -855,48 +855,7 @@ void
   <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
 </head>\n\
 <body>\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+</body>\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
