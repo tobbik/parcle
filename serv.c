@@ -918,10 +918,23 @@ void
 
 		cn->data_buf        = cn->data_buf_head;
 		cn->processed_bytes = strlen(cn->data_buf_head);
-		cn->req_type  = REQSTATE_SEND_FILE;
 
-		/* do the initial send from here so we trigger the select loop */
-		send_file(cn);
+		// push out the first block ...
+		sent = send (cn->net_socket, cn->data_buf, cn->processed_bytes, 0);
+		if (0 > sent || cn->processed_bytes == sent) {
+			remove_conn_from_list(cn);
+		}
+		else if (0 == sent) {
+			/* Do nothing */
+		}
+		else {
+			cn->data_buf         = cn->data_buf + sent;
+			cn->processed_bytes -= sent;
+			/* let the select loop take over */
+			cn->req_type         = REQSTATE_SEND_FILE;
+		}
+		/* pick up some slack in case some others missed */
+		pthread_cond_signal (&wake_worker_cond);
 	}
 }
 
