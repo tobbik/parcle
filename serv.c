@@ -32,7 +32,7 @@
 
 #define INITIAL_CONNS            5
 /* experimental number */
-#define WORKER_THREADS           4
+#define WORKER_THREADS           2
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP/1.1"
 #define DEBUG_VERBOSE            0
@@ -174,8 +174,7 @@ clean_on_quit(int sig)
 
 	/* cleanup the threads */
 	for(i = 0; i < WORKER_THREADS; i++) {
-		//pthread_kill(&_Workers[i], SIGTERM);
-		;
+		pthread_cancel(_Workers[i]);
 	}
 
 	exit(0);
@@ -238,6 +237,10 @@ main(int argc, char *argv[])
 	/* create workers for application */
 	for(i = 0; i < WORKER_THREADS; i++) {
 		pthread_create(&_Workers[i], NULL, &run_app_thread, (void *) &i);
+	}
+	sleep(1);
+	for(i = 0; i < WORKER_THREADS; i++) {
+		pthread_detach( _Workers[i] );
 	}
 
 #if DEBUG_VERBOSE == 1
