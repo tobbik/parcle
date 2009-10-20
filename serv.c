@@ -418,7 +418,7 @@ add_conn_to_list(int sd, char *ip)
 }
 
 static void
-handle_new_conn(int listen_sd)
+handle_new_conn( int listen_sd )
 {
 	int x;
 	struct sockaddr_in their_addr;
@@ -430,7 +430,7 @@ handle_new_conn(int listen_sd)
 }
 
 void
-remove_conn_from_list(struct cn_strct *cn)
+remove_conn_from_list( struct cn_strct *cn )
 {
 	struct cn_strct *tp;
 	int shouldret = 0;
@@ -837,10 +837,12 @@ void
 			cn_t = cn->q_prev;
 			_Queue_head = cn_t;
 		}
+#if DEBUG_VERBOSE == 1
 		if (_Queue_count > 1)
 			printf("EMPTY: %d --- Left in Queue AFTER REMOVAL: %d\n",
 				_Queue_empty, --(_Queue_count)
 			);
+#endif
 
 		pthread_mutex_unlock ( &pull_job_mutex );
 
@@ -858,7 +860,6 @@ void
   <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
 </head>\n\
 <body>\n\
-</body>\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
@@ -915,7 +916,7 @@ void
 		);
 #endif
 
-		cn->data_buf  = cn->data_buf_head;
+		cn->data_buf        = cn->data_buf_head;
 		cn->processed_bytes = strlen(cn->data_buf_head);
 		cn->req_type  = REQSTATE_SEND_FILE;
 
