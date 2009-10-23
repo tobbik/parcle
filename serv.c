@@ -133,7 +133,9 @@ static const struct luaL_reg app_lib [] = {
 
 /* ######################## GLOBAL VARIABLES ############################### */
 struct cn_strct     *_Free_conns;       /* idleing conns, LIFO stack */
+int                  _Free_count;
 struct cn_strct     *_Busy_conns;       /* working conns, doubly linked list */
+int                  _Busy_count;
 const char * const   _Server_version = "testserver/poc";
 int                  _Master_sock;      /* listening master socket */
 time_t               _Last_loop;        /* marks the last run of select */
@@ -218,6 +220,7 @@ main(int argc, char *argv[])
 
 	/* Fill up the initial connection lists; _Free_conns is just a LIFO stack,
 	 * there shall never be a performance issues -> single linked only */
+	_Free_count=0;
 	for (i = 0; i < INITIAL_CONNS; i++) {
 		tp = _Free_conns;
 		_Free_conns = (struct cn_strct *) calloc(1, sizeof(struct cn_strct));
@@ -226,6 +229,7 @@ main(int argc, char *argv[])
 		_Free_conns->c_next = tp;
 		_Free_conns->c_prev = NULL;
 		_Free_conns->q_prev = NULL;
+		_Free_count++;
 	}
 
 	/* create the master listener */
@@ -396,6 +400,7 @@ add_conn_to_list(int sd, char *ip)
 	if (NULL == _Free_conns) {
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
+		_Free_count=0;
 	}
 	else {
 		tp = _Free_conns;
@@ -404,21 +409,26 @@ add_conn_to_list(int sd, char *ip)
 		 * to keep track of how much we need to null over upon reuse
 		 */
 		memset(tp->data_buf_head, 0, RECV_BUFF_LENGTH * sizeof(char));
+		_Free_count--;
 	}
+	//printf("FREE before done: %d\n", _Free_count);
 
 	tp->data_buf        = tp->data_buf_head;
 
 	/* attach to tail of the _Busy_conns */
 	if (NULL == _Busy_conns) {
+		//printf("ATTACH TO EMPTY BUSY CONNS at %d\n", _Busy_count);
 		tp->c_next          = NULL;
 		tp->c_prev          = NULL;
 		_Busy_conns         = tp;
 	}
 	else {
+		//printf("ATTACH TO BUSY CONNS TAIL at %d\n", _Busy_count);
 		tp->c_next          = _Busy_conns;
 		_Busy_conns->c_prev = tp;
 		_Busy_conns         = tp;
 	}
+	_Busy_count++;
 	//_Busy_conns->c_prev  = NULL;
 	tp->net_socket = sd;
 	/* make sure the FIFO queue pointer is empty */
@@ -456,19 +466,25 @@ remove_conn_from_list( struct cn_strct *cn )
 		return;
 
 	if (NULL == tp->c_prev) {          /* tail of _Busy_conns */
+		//printf("REMOVE BUSY TAIL at %d\n", _Busy_count);
 		if (NULL == tp->c_next) {      /* only one in the list */
+			//printf("BUSY TAIL EMPTY\n");
 			_Busy_conns = NULL;
 		}
 		else {
 			tp->c_next->c_prev  = NULL;
 			_Busy_conns         = tp->c_next;
 		}
+		_Busy_count--;
 	}
 	else if (NULL == tp->c_next) {    /* head of _Busy_conns */
+		//printf("REMOVE FROM BUSY HEAD at %d\n", _Busy_count);
 		tp->c_prev->c_next  = NULL;
 		tp->c_prev          = NULL;
+		_Busy_count--;
 	}
 	else {
+		//printf("REMOVE FROM INNER BUSY at %d\n", _Busy_count);
 		tp->c_prev->c_next = tp->c_next;
 		tp->c_next->c_prev = tp->c_prev;
 	}
@@ -477,6 +493,8 @@ remove_conn_from_list( struct cn_strct *cn )
 	cn->c_next          = _Free_conns;
 	cn->c_prev          = NULL;
 	_Free_conns         = cn;
+	_Free_count++;
+	// printf("FREE after done: %d\n", _Free_count);
 
 	/* Close it all down */
 	if (cn->net_socket != -1) {
