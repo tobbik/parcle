@@ -78,12 +78,15 @@ enum http_version
 /* contain all metadata regarding one connection */
 struct cn_strct
 {
-	struct  cn_strct     *c_next;           /* links to next cn */
-	struct  cn_strct     *q_prev;           /* links to previous cn in queue */
+	/* doubly linked list for the _Busy_conns */
+	struct  cn_strct     *c_next;
+	struct  cn_strct     *c_prev;
+	/* single linked list for queue FIFO styled */
+	struct  cn_strct     *q_prev;
+	/* basic information */
 	enum    req_states    req_state;
 	int                   net_socket;
 	int                   file_desc;
-
 	/* incoming buffer */
 	char                 *data_buf_head;    /* points to start, always */
 	char                 *data_buf;         /* points to current spot */
@@ -129,14 +132,14 @@ static const struct luaL_reg app_lib [] = {
 #endif
 
 /* ######################## GLOBAL VARIABLES ############################### */
-struct cn_strct     *_Free_conns;       /* idleing conns */
-struct cn_strct     *_Busy_conns;       /* conns bound to actions */
+struct cn_strct     *_Free_conns;       /* idleing conns, LIFO stack */
+struct cn_strct     *_Busy_conns;       /* working conns, doubly linked list */
 const char * const   _Server_version = "testserver/poc";
 int                  _Master_sock;      /* listening master socket */
 time_t               _Last_loop;        /* marks the last run of select */
 char                 _Master_date[30];  /* the formatted date */
 
-/* we could wrap that in a structure but then that's boring .. for now */
+/* a FIFO stack for quead up conns waiting for threads */
 struct cn_strct     *_Queue_head;
 struct cn_strct     *_Queue_tail;
 enum   bool          _Queue_empty;
@@ -173,7 +176,7 @@ clean_on_quit(int sig)
 	printf("Graceful exit done after signal: %d\n", sig);
 
 	/* cleanup the threads */
-	for(i = 0; i < WORKER_THREADS; i++) {
+	for (i = 0; i < WORKER_THREADS; i++) {
 		pthread_cancel(_Workers[i]);
 	}
 
@@ -213,13 +216,16 @@ main(int argc, char *argv[])
 	if (chdir(WEB_ROOT))
 		clean_on_quit(2);
 
-	/* Fill up the initial connection lists */
+	/* Fill up the initial connection lists; _Free_conns is just a LIFO stack,
+	 * there shall never be a performance issues -> single linked only */
 	for (i = 0; i < INITIAL_CONNS; i++) {
 		tp = _Free_conns;
 		_Free_conns = (struct cn_strct *) calloc(1, sizeof(struct cn_strct));
 		_Free_conns->data_buf_head =
 			(char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
 		_Free_conns->c_next = tp;
+		_Free_conns->c_prev = NULL;
+		_Free_conns->q_prev = NULL;
 	}
 
 	/* create the master listener */
@@ -229,7 +235,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	/* set up queue */
+	/* set up LIFO queue */
 	_Queue_tail = _Queue_head = NULL;
 	_Queue_empty = true;
 	_Queue_count = 0;
@@ -379,7 +385,7 @@ create_listener(int port)
 /*
  * get a socket and form a cn_strct around it
  *  - either pull it of free_conns or create one
- *  - add it to the busy_conns
+ *  - add it to the tail of _Busy_conns
  * */
 static void
 add_conn_to_list(int sd, char *ip)
@@ -402,10 +408,20 @@ add_conn_to_list(int sd, char *ip)
 
 	tp->data_buf        = tp->data_buf_head;
 
-	/* Make it part of the busy connection list */
-	tp->c_next     = _Busy_conns;
-	_Busy_conns    = tp;
+	/* attach to tail of the _Busy_conns */
+	if (NULL == _Busy_conns) {
+		tp->c_next          = NULL;
+		tp->c_prev          = NULL;
+		_Busy_conns         = tp;
+	}
+	else {
+		tp->c_next          = _Busy_conns;
+		_Busy_conns->c_prev = tp;
+		_Busy_conns         = tp;
+	}
+	//_Busy_conns->c_prev  = NULL;
 	tp->net_socket = sd;
+	/* make sure the FIFO queue pointer is empty */
 	tp->q_prev     = NULL;
 
 	/* Pre/Re-set initial variables */
@@ -433,33 +449,34 @@ void
 remove_conn_from_list( struct cn_strct *cn )
 {
 	struct cn_strct *tp;
-	int shouldret = 0;
 
-	tp = _Busy_conns;
+	tp = cn;
 
 	if (tp == NULL || cn == NULL)
-		shouldret = 1;
-	else if (tp == cn)
-		_Busy_conns = tp->c_next;
-	else {
-		while (tp != NULL) {
-			if (tp->c_next == cn) {
-				tp->c_next = (tp->c_next)->c_next;
-				shouldret = 0;
-				break;
-			}
-
-			tp = tp->c_next;
-			shouldret = 1;
-		}
-	}
-
-	if (shouldret)
 		return;
 
-	/* If we did, add it to the free list */
-	cn->c_next = _Free_conns;
-	_Free_conns = cn;
+	if (NULL == tp->c_prev) {          /* tail of _Busy_conns */
+		if (NULL == tp->c_next) {      /* only one in the list */
+			_Busy_conns = NULL;
+		}
+		else {
+			tp->c_next->c_prev  = NULL;
+			_Busy_conns         = tp->c_next;
+		}
+	}
+	else if (NULL == tp->c_next) {    /* head of _Busy_conns */
+		tp->c_prev->c_next  = NULL;
+		tp->c_prev          = NULL;
+	}
+	else {
+		tp->c_prev->c_next = tp->c_next;
+		tp->c_next->c_prev = tp->c_prev;
+	}
+
+	/* Attach to the end of the _Free_conns, only single link it with c_next */
+	cn->c_next          = _Free_conns;
+	cn->c_prev          = NULL;
+	_Free_conns         = cn;
 
 	/* Close it all down */
 	if (cn->net_socket != -1) {
