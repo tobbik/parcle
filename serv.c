@@ -100,6 +100,9 @@ struct cn_strct
 	enum    http_version  http_prot;
 
 	enum    bool          is_static;
+#if DEBUG_VERBOSE == 2
+	int                   identifier;       /* DEBUG: keep track of structs */
+#endif
 };
 
 /* ######################## FUNCTION DECLARATIONS ########################## */
@@ -114,6 +117,10 @@ static void  read_request           ( struct cn_strct *cn );
 static void  write_head             ( struct cn_strct *cn );
 static void  buff_file              ( struct cn_strct *cn );
 static void  send_file              ( struct cn_strct *cn );
+/* debug */
+#if DEBUG_VERBOSE == 2
+static void  list_list              ( struct cn_strct *cn );
+#endif
 
 /* Forward declaration of string parsing methods */
 static void  parse_first_line       ( struct cn_strct *cn );
@@ -140,6 +147,9 @@ const char * const   _Server_version = "testserver/poc";
 int                  _Master_sock;      /* listening master socket */
 time_t               _Last_loop;        /* marks the last run of select */
 char                 _Master_date[30];  /* the formatted date */
+#if DEBUG_VERBOSE == 2
+int                  _Conn_count;       /* all existing cn_structs */
+#endif
 
 /* a FIFO stack for quead up conns waiting for threads */
 struct cn_strct     *_Queue_head;
@@ -206,6 +216,9 @@ main(int argc, char *argv[])
 	_Last_loop = time(NULL);
 	tm_struct  = gmtime(&_Last_loop);
 	strftime( _Master_date, 32, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
+#if DEBUG_VERBOSE == 2
+	_Conn_count=0;
+#endif
 #if DEBUG_VERBOSE == 1
 	printf("STARTED AT: %s\n", _Master_date);
 #endif
@@ -229,6 +242,9 @@ main(int argc, char *argv[])
 		_Free_conns->c_next = tp;
 		_Free_conns->c_prev = NULL;
 		_Free_conns->q_prev = NULL;
+#if DEBUG_VERBOSE == 2
+		_Free_conns->identifier = _Conn_count++;
+#endif
 		_Free_count++;
 	}
 
@@ -401,6 +417,9 @@ add_conn_to_list(int sd, char *ip)
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
 		_Free_count=0;
+#if DEBUG_VERBOSE == 2
+		tp->identifier = _Conn_count++;
+#endif
 	}
 	else {
 		tp = _Free_conns;
@@ -429,6 +448,11 @@ add_conn_to_list(int sd, char *ip)
 		_Busy_conns         = tp;
 	}
 	_Busy_count++;
+#if DEBUG_VERBOSE == 2
+	printf("AFTER ADDING:\n");
+	list_list(_Free_conns);
+	list_list(_Busy_conns);
+#endif
 	//_Busy_conns->c_prev  = NULL;
 	tp->net_socket = sd;
 	/* make sure the FIFO queue pointer is empty */
@@ -999,6 +1023,33 @@ l_buffer_output (lua_State *L)
 	strncpy(cn->data_buf_head, lua_tostring(L,2), lua_strlen  (L, 2 ));
 
 	return 0;
+}
+#endif
+
+#if DEBUG_VERBOSE == 2
+/*
+ * a simplistic way to print out linked lists, a very crude visualization but it
+ * helps debugging
+ */
+static void list_list (struct cn_strct *nd)
+{
+	struct cn_strct *tmp, *tmp1;
+
+	tmp=nd;
+	printf( "prev\tdata\tnext\n" );
+	while (NULL != tmp) {
+		tmp1 = tmp->c_next;
+		if (NULL != tmp->c_prev && NULL != tmp->c_next)
+			printf("%d\t%d\t%d\n", tmp->c_prev->identifier,
+				tmp->identifier, tmp->c_next->identifier );
+		else if (NULL == tmp->c_prev && NULL != tmp->c_next)
+			printf("  \t%d\t%d\n", tmp->identifier, tmp->c_next->identifier );
+		else if (NULL != tmp->c_prev && NULL == tmp->c_next)
+			printf("%d\t%d\t  \n", tmp->c_prev->identifier, tmp->identifier);
+		else
+			printf("  \t%d\t  \n", tmp->identifier);
+		tmp=tmp1;
+	}
 }
 #endif
 
