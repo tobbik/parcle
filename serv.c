@@ -1035,10 +1035,15 @@ static void
 list_list (struct cn_strct *nd)
 {
 	struct cn_strct *tmp, *tmp1;
+	int              cnt = 0;
 
 	tmp=nd;
 	printf( "prev\tdata\tnext\n" );
 	while (NULL != tmp) {
+		if (tmp == nd && 0 < cnt++) {
+			printf("DETECTED LOOP \n");
+			break;
+		}
 		tmp1 = tmp->c_next;
 		if (NULL != tmp->c_prev && NULL != tmp->c_next)
 			printf("%d\t%d\t%d\n", tmp->c_prev->identifier,
