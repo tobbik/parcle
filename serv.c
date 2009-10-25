@@ -35,7 +35,7 @@
 #define WORKER_THREADS           2
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP/1.1"
-#define DEBUG_VERBOSE            3
+#define DEBUG_VERBOSE            2
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
@@ -170,6 +170,16 @@ clean_on_quit(int sig)
 {
 	struct cn_strct *tp;
 	int i;
+#if DEBUG_VERBOSE == 2
+	printf("\n\n\n\n\nPRINTING QUEUE: \n");
+	list_queue(_Queue_head, _Queue_count);
+	printf("PRINTING QUEUE_LIST: \n");
+	list_list(_Queue_tail);
+	printf("PRINTING FREEs: \n");
+	list_list(_Free_conns);
+	printf("PRINTING BUSYs: \n");
+	list_list(_Busy_conns);
+#endif
 
 	while (NULL != _Free_conns) {
 		tp = _Free_conns->c_next;
@@ -449,11 +459,6 @@ add_conn_to_list(int sd, char *ip)
 		_Busy_conns         = tp;
 	}
 	_Busy_count++;
-#if DEBUG_VERBOSE == 2
-	printf("AFTER ADDING:\n");
-	list_list(_Free_conns);
-	list_list(_Busy_conns);
-#endif
 	//_Busy_conns->c_prev  = NULL;
 	tp->net_socket = sd;
 	/* make sure the FIFO queue pointer is empty */
