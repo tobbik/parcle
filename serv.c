@@ -128,7 +128,7 @@ static const char  *getmimetype     ( const char *name );
 
 /* Forward declaration of app bound methods */
 static void *run_app_thread         ( void *tid );
-static void  c_response (struct cn_strct *cn);
+static void  c_response             ( struct cn_strct *cn );
 
 #ifdef HAVE_LUA
 static int   l_buffer_output        ( lua_State *L );
@@ -156,7 +156,6 @@ int                  _Conn_count;       /* all existing cn_structs */
 /* a FIFO stack for quead up conns waiting for threads */
 struct cn_strct     *_Queue_head;
 struct cn_strct     *_Queue_tail;
-enum   bool          _Queue_empty;
 int                  _Queue_count;
 pthread_mutex_t wake_worker_mutex  = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t pull_job_mutex     = PTHREAD_MUTEX_INITIALIZER;
@@ -259,7 +258,6 @@ main(int argc, char *argv[])
 
 	/* set up LIFO queue */
 	_Queue_tail = _Queue_head = NULL;
-	_Queue_empty = true;
 	_Queue_count = 0;
 
 	/* create workers for application */
@@ -670,15 +668,13 @@ write_head (struct cn_strct *cn)
 	else {
 		/* enqueue this connection to the _App_queue */
 		pthread_mutex_lock( &pull_job_mutex );
-		if (NULL == _Queue_head && NULL == _Queue_tail) {
+		if (NULL == _Queue_head) {
 			_Queue_tail = _Queue_head = cn;
-			_Queue_empty = false;
 			_Queue_count = 1;
 		}
 		else {
 			_Queue_tail->q_prev = cn;
 			_Queue_tail = cn;
-			//_Queue_tail->q_prev = NULL;
 			_Queue_count++;
 		}
 		pthread_mutex_unlock( &pull_job_mutex );
@@ -871,37 +867,32 @@ void
 	while(1) {
 		// monitor
 		pthread_mutex_lock( &wake_worker_mutex );
-		while(_Queue_empty == true) {
+		while (NULL == _Queue_head) {
 			pthread_cond_wait( &wake_worker_cond, &wake_worker_mutex );
 		}
 		pthread_mutex_unlock( &wake_worker_mutex );
 
 		/* pull job from queue */
 		pthread_mutex_lock   ( &pull_job_mutex );
-		if (NULL == _Queue_head && NULL == _Queue_tail) {
+		if (NULL == _Queue_head) {
 			printf("QUEUE MISSED!!\n");
-			_Queue_empty = true;
 			pthread_mutex_unlock ( &pull_job_mutex );
 			continue;
 		}
-		else if (NULL == _Queue_head->q_prev) {
-			cn   =   _Queue_head;
-			_Queue_head  = NULL;
-			_Queue_tail  = NULL;
-			_Queue_empty = true;
-		}
 		else {
-			cn   = _Queue_head;
-			cn_t = cn->q_prev;
-			_Queue_head = cn_t;
+			cn   =   _Queue_head;
+			_Queue_count--;
+			if (NULL == _Queue_head->q_prev)
+				_Queue_head = NULL;
+			else
+				_Queue_head = cn->q_prev;
 		}
 #if DEBUG_VERBOSE == 1
 		if (_Queue_count > 1)
 			printf("EMPTY: %d --- Left in Queue AFTER REMOVAL: %d\n",
-				_Queue_empty, --(_Queue_count)
+				_Queue_empty, _Queue_count
 			);
 #endif
-
 		pthread_mutex_unlock ( &pull_job_mutex );
 
 #ifdef HAVE_LUA
@@ -968,7 +959,7 @@ l_buffer_output (lua_State *L)
  * It's mean to be used as a test method
  */
 static void
-c_response (struct cn_strct *cn)
+c_response ( struct cn_strct *cn )
 {
 	char *page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\
   \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\n\
