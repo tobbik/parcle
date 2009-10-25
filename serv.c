@@ -674,7 +674,7 @@ write_head (struct cn_strct *cn)
 	else {
 		/* enqueue this connection to the _App_queue */
 		pthread_mutex_lock( &pull_job_mutex );
-		if (NULL == _Queue_head) {
+		if (NULL == _Queue_tail) {
 			_Queue_tail = _Queue_head = cn;
 			_Queue_count = 1;
 		}
@@ -683,9 +683,9 @@ write_head (struct cn_strct *cn)
 			_Queue_tail = cn;
 			_Queue_count++;
 		}
+		cn->req_state = REQSTATE_PROC_APP;
 		pthread_mutex_unlock( &pull_job_mutex );
 
-		cn->req_state = REQSTATE_PROC_APP;
 		/* wake a worker to start the application */
 		pthread_cond_signal (&wake_worker_cond);   /* we added one -> we wake one */
 	}
@@ -858,7 +858,6 @@ void
 *run_app_thread (void *tid)
 {
 	struct cn_strct *cn;
-	struct cn_strct *cn_t;
 	int              id =       *((int*) tid);
 	int              sent;
 
@@ -888,10 +887,14 @@ void
 		else {
 			cn   =   _Queue_head;
 			_Queue_count--;
-			if (NULL == _Queue_head->q_prev)
+			if (NULL == _Queue_head->q_prev) {
 				_Queue_head = NULL;
-			else
+				_Queue_tail = NULL;
+			}
+			else {
 				_Queue_head = cn->q_prev;
+				cn->q_prev  = NULL;
+			}
 		}
 #if DEBUG_VERBOSE == 3
 		if (_Queue_count > 1)
