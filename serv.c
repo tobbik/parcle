@@ -120,6 +120,7 @@ static void  send_file              ( struct cn_strct *cn );
 /* debug */
 #if DEBUG_VERBOSE == 2
 static void  list_list              ( struct cn_strct *cn );
+static void  list_queue             ( struct cn_strct *cn, int count );
 #endif
 
 /* Forward declaration of string parsing methods */
@@ -1055,6 +1056,29 @@ list_list (struct cn_strct *nd)
 		else
 			printf("  \t%d\t  \n", tmp->identifier);
 		tmp=tmp1;
+	}
+}
+
+static void
+list_queue (struct cn_strct *nd, int count)
+{
+	struct cn_strct *tmp, *tmp1;
+	int              cnt = 0;
+
+	tmp=nd;
+	printf( "q_prev\tdata\tq_next\n" );
+	while (NULL != tmp) {
+		if (tmp == nd && 0 < cnt) {
+			printf("DETECTED LOOP \n");
+			break;
+		}
+		tmp1 = tmp->q_prev;
+		if (NULL == tmp->q_prev)
+			printf("  \t%d\t  \t%d\n", tmp->identifier, count);
+		else
+			printf("%d\t%d\t  \t%d\n", tmp->q_prev->identifier, tmp->identifier, count);
+		tmp=tmp1;
+		cnt++;
 	}
 }
 #endif
