@@ -35,7 +35,7 @@
 #define WORKER_THREADS           2
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP/1.1"
-#define DEBUG_VERBOSE            0
+#define DEBUG_VERBOSE            3
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
@@ -887,10 +887,10 @@ void
 			else
 				_Queue_head = cn->q_prev;
 		}
-#if DEBUG_VERBOSE == 1
+#if DEBUG_VERBOSE == 3
 		if (_Queue_count > 1)
-			printf("EMPTY: %d --- Left in Queue AFTER REMOVAL: %d\n",
-				_Queue_empty, _Queue_count
+			printf("Left in Queue AFTER REMOVAL: %d\n",
+				_Queue_count
 			);
 #endif
 		pthread_mutex_unlock ( &pull_job_mutex );
