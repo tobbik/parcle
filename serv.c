@@ -16,6 +16,8 @@
 #include <fcntl.h>
 #include <time.h>
 
+//#define HAVE_LUA
+
 #ifdef HAVE_LUA
 #include "lua.h"
 #include "lualib.h"
@@ -100,6 +102,7 @@ struct cn_strct
 	enum    http_version  http_prot;
 
 	enum    bool          is_static;
+	enum    bool          is_dead;          /* read 0 bytes more than once? */
 #if DEBUG_VERBOSE == 2
 	int                   identifier;       /* DEBUG: keep track of structs */
 #endif
@@ -473,6 +476,7 @@ add_conn_to_list(int sd, char *ip)
 	tp->line_count       = 0;
 	tp->pay_load         = '\0';
 	tp->is_static        = false;
+	tp->is_dead          = false;
 }
 
 static void
@@ -561,8 +565,12 @@ read_request( struct cn_strct *cn )
 
 	// sanity check
 	if (num_recv <= 0) {
-		if (num_recv < 0) /* really dead? */
+		if (num_recv < 0 || cn->is_dead) /* really dead? */
 			remove_conn_from_list(cn);
+		else {
+			printf("DEAD connection it seems\n");
+			cn->is_dead = true;
+		}
 		return;
 	}
 
@@ -967,7 +975,7 @@ l_buffer_output (lua_State *L)
 #else
 /*
  * A native method that returns a static response into the connections socket
- * It's mean to be used as a test method
+ * It's meant to be used as a test method
  */
 static void
 c_response ( struct cn_strct *cn )
