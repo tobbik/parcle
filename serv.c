@@ -119,8 +119,9 @@ static void  buff_file              ( struct cn_strct *cn );
 static void  send_file              ( struct cn_strct *cn );
 /* debug */
 #if DEBUG_VERBOSE == 2
-static void  list_list              ( struct cn_strct *cn );
-static void  list_queue             ( struct cn_strct *cn, int count );
+static void  list_list              ( struct cn_strct *nd );
+static void  list_queue             ( struct cn_strct *nd, int count );
+static void  show_cn                ( struct cn_strct *cn);
 #endif
 
 /* Forward declaration of string parsing methods */
@@ -190,6 +191,7 @@ clean_on_quit(int sig)
 
 	while (NULL != _Busy_conns) {
 		tp = _Busy_conns->c_next;
+		show_cn(tp);
 		free(_Busy_conns->data_buf_head);
 		close(_Busy_conns->net_socket);
 		free(_Busy_conns);
@@ -683,8 +685,8 @@ write_head (struct cn_strct *cn)
 			_Queue_tail = cn;
 			_Queue_count++;
 		}
-		cn->req_state = REQSTATE_PROC_APP;
 		pthread_mutex_unlock( &pull_job_mutex );
+		cn->req_state = REQSTATE_PROC_APP;
 
 		/* wake a worker to start the application */
 		pthread_cond_signal (&wake_worker_cond);   /* we added one -> we wake one */
@@ -1088,6 +1090,20 @@ list_queue (struct cn_strct *nd, int count)
 		tmp=tmp1;
 		cnt++;
 	}
+}
+static void
+show_cn (struct cn_strct *cn)
+{
+	printf("\n\nIDENTIFIER:  %d\n"
+		"REQSTATE:  %d\n"
+		"DATA_ALL: %s\n"
+		"DATA_NOW: %s\n"
+		"PROCESSED: %d\n",
+		cn->identifier,
+		cn->req_state,
+		cn->data_buf_head,
+		cn->data_buf,
+		cn->processed_bytes);
 }
 #endif
 
