@@ -16,6 +16,14 @@
 #include <fcntl.h>
 #include <time.h>
 
+#define HAVE_LUA
+
+#ifdef HAVE_LUA
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#endif
+
 /* A few constants */
 #define BACK_LOG                 5
 
@@ -614,6 +622,15 @@ void
 	int              id =       *((int*) tid);
 	int              sent;
 
+#ifdef HAVE_LUA
+	// thread local lua state
+	lua_State *L = lua_open();
+	luaL_openlibs (L);
+	luaL_openlib  (L, "parcle", app_lib, 0);
+	luaL_dofile   (L, "../app/_init.lua");
+#endif
+
+
 	while(1) {
 		// monitor
 		pthread_mutex_lock( &wake_worker_mutex );
@@ -649,7 +666,14 @@ void
 #endif
 		pthread_mutex_unlock ( &pull_job_mutex );
 
+#ifdef HAVE_LUA
+		/* Execute the lua function we want */
+		lua_getglobal(L, "test");
+		lua_pushlightuserdata(L, (void*) cn);
+		lua_call(L, 1, 0);
+#else
 		c_response(cn);
+#endif
 
 		cn->data_buf        = cn->data_buf_head;
 
@@ -671,6 +695,34 @@ void
 	}
 }
 
+
+#ifdef HAVE_LUA
+/*_                  _ _ _
+ | |   _   _  __ _  | (_) |__  ___
+ | |  | | | |/ _` | | | | '_ \/ __|
+ | |__| |_| | (_| | | | | |_) \__ \
+ |_____\__,_|\__,_| |_|_|_.__/|___/
+
+ from here we deal with C functions that will be exposed to Lua as part of the
+ par[ck]le library (aka Lua module)*/
+
+/*
+ * @param:        the connection pointer
+ * @param:        the string reference
+ */
+static int
+l_buffer_output (lua_State *L)
+{
+	//const char      *data   = NULL;
+	struct cn_strct *cn     = NULL;
+
+	cn     =  (struct cn_strct*) lua_touserdata(L, 1);
+	strncpy(cn->data_buf_head, lua_tostring(L,2), lua_strlen  (L, 2 ));
+	cn->processed_bytes = lua_strlen  (L, 2 );
+
+	return 0;
+}
+#else
 /*
  * A native method that returns a static response into the connections socket
  * It's meant to be used as a test method
@@ -790,6 +842,7 @@ c_response ( struct cn_strct *cn)
 		_Master_date, _Master_date, page
 	);
 }
+#endif
 
 #if DEBUG_VERBOSE == 2
 /*

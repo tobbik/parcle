@@ -6,7 +6,7 @@ LD=gcc
 all: testserv linkedlist x
 
 testserv: testserv.o
-	$(LD) $@.o -o $@ -lpthread
+	$(LD) $@.o -o $@ -lpthread -llua -lm
 
 x: x.o
 	$(LD) $@.o -o $@ -lpthread
