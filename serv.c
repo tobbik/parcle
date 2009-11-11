@@ -955,11 +955,11 @@ void
 static int
 l_buffer_output (lua_State *L)
 {
-	//const char      *data   = NULL;
-	struct cn_strct *cn     = NULL;
+	struct cn_strct *cn  = NULL;
+	cn  =  (struct cn_strct*) lua_touserdata(L, 1);
 
-	cn     =  (struct cn_strct*) lua_touserdata(L, 1);
-	strncpy(cn->data_buf_head, lua_tostring(L,2), lua_strlen  (L, 2 ));
+	cn->processed_bytes = lua_strlen (L, 2);
+	strncpy( cn->data_buf_head, lua_tostring (L, 2), cn->processed_bytes );
 
 	return 0;
 }
@@ -1071,7 +1071,8 @@ c_response ( struct cn_strct *cn )
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
 </body>\n\
 </html>\n";
-	snprintf(cn->data_buf_head, RECV_BUFF_LENGTH,
+	cn->processed_bytes = snprintf(
+		cn->data_buf_head, RECV_BUFF_LENGTH,
 		HTTP_VERSION" 200 OK\r\n"
 		"Server: %s\r\n"
 		"Content-Type: text/html\r\n"
