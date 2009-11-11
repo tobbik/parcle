@@ -102,7 +102,6 @@ struct cn_strct
 	enum    http_version  http_prot;
 
 	enum    bool          is_static;
-	enum    bool          is_dead;          /* read 0 bytes more than once? */
 #if DEBUG_VERBOSE == 2
 	int                   identifier;       /* DEBUG: keep track of structs */
 #endif
@@ -482,7 +481,6 @@ add_conn_to_list(int sd, char *ip)
 	tp->line_count       = 0;
 	tp->pay_load         = '\0';
 	tp->is_static        = false;
-	tp->is_dead          = false;
 }
 
 static void
@@ -571,12 +569,7 @@ read_request( struct cn_strct *cn )
 
 	// sanity check
 	if (num_recv <= 0) {
-		if (num_recv < 0 || cn->is_dead) /* really dead? */
-			remove_conn_from_list(cn);
-		else {
-			printf("DEAD connection it seems\n");
-			cn->is_dead = true;
-		}
+		remove_conn_from_list(cn);
 		return;
 	}
 
