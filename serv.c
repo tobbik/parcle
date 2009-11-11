@@ -58,9 +58,9 @@ enum req_states
 {
 	REQSTATE_READ_HEAD,
 	REQSTATE_SEND_HEAD,
+	REQSTATE_BUFF_HEAD,
 	REQSTATE_BUFF_FILE,
-	REQSTATE_SEND_FILE,
-	REQSTATE_PROC_APP
+	REQSTATE_SEND_FILE
 };
 
 enum req_types
@@ -313,6 +313,10 @@ main(int argc, char *argv[])
 				rnum = (tp->net_socket > rnum) ? tp->net_socket : rnum;
 			}
 			if (REQSTATE_SEND_HEAD == tp->req_state) {
+				FD_SET(tp->net_socket, &wfds);
+				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
+			}
+			if (REQSTATE_BUFF_HEAD == tp->req_state) {
 				FD_SET(tp->net_socket, &wfds);
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
@@ -696,7 +700,7 @@ write_head (struct cn_strct *cn)
 			_Queue_count++;
 		}
 		pthread_mutex_unlock( &pull_job_mutex );
-		cn->req_state = REQSTATE_PROC_APP;
+		cn->req_state  = REQSTATE_BUFF_HEAD;
 
 		/* wake a worker to start the application */
 		pthread_cond_signal (&wake_worker_cond);   /* we added one -> we wake one */
@@ -928,20 +932,12 @@ void
 		cn->data_buf        = cn->data_buf_head;
 		cn->processed_bytes = strlen(cn->data_buf_head);
 
-		// push out the first block ...
-		sent = send (cn->net_socket, cn->data_buf, cn->processed_bytes, 0);
-		if (0 > sent || cn->processed_bytes == sent) {
-			remove_conn_from_list(cn);
+		/* signal the select loop that we are done ... */
+		while (REQSTATE_SEND_FILE != cn->req_state) {
+			sent = send (cn->net_socket, "", 0, 0);
+			cn->req_state       = REQSTATE_SEND_FILE;
 		}
-		else if (0 == sent) {
-			/* Do nothing */
-		}
-		else {
-			cn->data_buf         = cn->data_buf + sent;
-			cn->processed_bytes -= sent;
-			/* let the select loop take over */
-			cn->req_type         = REQSTATE_SEND_FILE;
-		}
+
 		/* pick up some slack in case some others missed */
 		pthread_cond_signal (&wake_worker_cond);
 	}
