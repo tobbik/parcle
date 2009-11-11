@@ -16,7 +16,7 @@
 #include <fcntl.h>
 #include <time.h>
 
-//#define HAVE_LUA
+#define HAVE_LUA
 
 #ifdef HAVE_LUA
 #include "lua.h"
@@ -37,7 +37,7 @@
 #define WORKER_THREADS           2
 #define HTTP_PORT                8000
 #define HTTP_VERSION             "HTTP/1.1"
-#define DEBUG_VERBOSE            2
+#define DEBUG_VERBOSE            0
 #define WEB_ROOT                 "./"
 #define STATIC_ROOT              "webroot"
 #define STATIC_ROOT_LENGTH       7
@@ -194,7 +194,9 @@ clean_on_quit(int sig)
 
 	while (NULL != _Busy_conns) {
 		tp = _Busy_conns->c_next;
+#if DEBUG_VERBOSE == 2
 		show_cn(tp);
+#endif
 		free(_Busy_conns->data_buf_head);
 		close(_Busy_conns->net_socket);
 		free(_Busy_conns);
@@ -731,7 +733,7 @@ send_file (struct cn_strct *cn)
 		cn->processed_bytes, 0);
 
 #if DEBUG_VERBOSE == 1
-	printf("sent:%d   ---- left: %d\n", rv, cn->processed_bytes-rv);
+	printf("sent: %d   ---- left: %d\n", rv, cn->processed_bytes-rv);
 #endif
 	if (0 > rv) {
 		remove_conn_from_list(cn);
@@ -984,10 +986,58 @@ c_response ( struct cn_strct *cn )
   \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\n\
 <html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" >\n\
 <head>\n\
-  <title>I'm the Favicon substitute</title>\n\
+  <title>A C-generated dynamic page</title>\n\
   <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
 </head>\n\
 <body>\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
+  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
   <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
