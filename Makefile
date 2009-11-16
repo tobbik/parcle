@@ -1,13 +1,14 @@
-CC=clang -emit-llvm-bc -g -O0
+CC=clang -g -O0
 LD=llvm-ld -native
 
-srv: serv.o
-	$(LD) serv.o -o $@ -lpthread -llua -lm
+parcle: main.o server.o http.o app.o config.o
+	$(LD) main.o server.o http.o app.o config.o -o $@ -lpthread -llua -lm
 	-rm $@.bc
+
 .o:
 	$(CC) -c -o $@.o $@.c
 
 clean:
-	-rm *.o srv
+	-rm *.o parcle
 
 # vim: ts=4 sw=4 st=4 sta tw=80 list

@@ -3,7 +3,10 @@
 CC=gcc -Wall -g -O0
 LD=gcc
 
-all: testserv linkedlist x
+all: orig_server testserv linkedlist x
+
+orig_server: orig_server.o
+	$(LD) $@.o -o $@ -lpthread -llua -lm
 
 testserv: testserv.o
 	$(LD) $@.o -o $@ -lpthread -llua -lm
