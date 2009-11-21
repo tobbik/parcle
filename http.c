@@ -63,13 +63,8 @@ parse_first_line( struct cn_strct *cn )
 	}
 	/* GET - count get parameters */
 	while ( got_get && ' ' != *next ) {
-		switch (*next) {
-			case '=':
-				get_cnt++;
-				break;
-			default:
-				// keep chewing
-				break;
+		if( '=' == *next) {
+			get_cnt++;
 		}
 		next++;
 	}

@@ -8,7 +8,7 @@
  *
  */
 
-#include <stdio.h>              /* sadly, some printf statements */
+#include <stdio.h>            /* sadly, some printf statements */
 #include <sys/stat.h>         /* stat() */
 #include <fcntl.h>            /* F_GETFL, ... */
 #include <string.h>           /* memset() */ 
@@ -201,6 +201,7 @@ add_conn_to_list(int sd, char *ip)
 	tp->line_count       = 0;
 	tp->pay_load         = '\0';
 	tp->is_static        = false;
+	tp->url              = NULL;
 }
 
 static void
@@ -281,42 +282,42 @@ read_request( struct cn_strct *cn )
 		0
 	);
 
-	// sanity check
+	/* sanity check - we can't read, just assume the worst */
 	if (num_recv <= 0) {
 		remove_conn_from_list(cn);
 		return;
 	}
 
-	// set the read pointer to where we left off
+	/* set the read pointer to where we left off */
 	next = cn->data_buf_head + cn->processed_bytes;
 
-	// adjust buffer
-	cn->processed_bytes += num_recv;
-	cn->data_buf = cn->data_buf_head + cn->processed_bytes;
+	/* adjust buffer */
+	//cn->processed_bytes += num_recv;
+	cn->data_buf = cn->data_buf_head + cn->processed_bytes + num_recv;
 
 	/* null terminate the current buffer -> overwrite on next read */
-	cn->data_buf_head[cn->processed_bytes] = '\0';
+	cn->data_buf_head[cn->processed_bytes+num_recv] = '\0';
 
 	/* a naive little line parser */
-	while ( (*next != '\0') ) {
-		switch (*next) {
-			case '\r':
-				if (*(next+1)=='\n' ) {
-					cn->line_count++;
-					if (1 == cn->line_count) {
-						parse_first_line(cn);
-					}
-					if (*(next+2)=='\r' && *(next+3)=='\n'  ) {
-						// proceed next stage
-						cn->req_state = REQSTATE_SEND_HEAD;
-					}
-				}
-				break;
-			default:
-				break;
+	while ( true ) {
+		next = strchr( next+1, (int) '\r' );
+		if (NULL == next) {
+			cn->processed_bytes += num_recv;
+			break;
 		}
-		next++;
+		else if ('\n' == *(next+1) ) {
+			if (NULL == cn->url) {
+				parse_first_line(cn);
+			}
+			if ( '\r'==*(next+2) && '\n'==*(next+3) ) {
+				// proceed next stage
+				cn->req_state = REQSTATE_SEND_HEAD;
+				break;
+			}
+		}
 	}
+	// adjust buffer
+	cn->processed_bytes += num_recv;
 #if DEBUG_VERBOSE == 1
 	if (REQSTATE_SEND_HEAD == cn->req_state) {
 		printf("METHOD: %d\n",   cn->req_type);
@@ -333,6 +334,7 @@ void
 write_head (struct cn_strct *cn)
 {
 	char       buf[RECV_BUFF_LENGTH];
+	char       *url;
 	struct     stat stbuf;
 	int        file_exists;
 	time_t     now = time(NULL);
@@ -345,26 +347,24 @@ write_head (struct cn_strct *cn)
 		/* Sun, 06 Nov 1994 08:49:37 GMT */
 		strftime( _Master_date, 30, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
 	}
-	
+
 	cn->url++;              /* eat leading slash */
-	if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH ) |
-	    0 == strncasecmp(cn->url, ROBOTS_URL,  ROBOTS_URL_LENGTH  ) ||
-	    0 == strncasecmp(cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH ) ) {
+	url = cn->url;
+	if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH ) ||
+	    0 == strncasecmp(cn->url, ROBOTS_URL,  ROBOTS_URL_LENGTH ) ) {
 		cn->is_static=true;
+		snprintf(buf, sizeof(buf),STATIC_ROOT"/%s", cn->url);
+		cn->url = buf;
+		cn->is_static=true;
+		file_exists = stat(cn->url, &stbuf);
+	}
+	else if ( 0 == strncasecmp(cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH )) {
+		cn->is_static=true;
+		file_exists = stat(cn->url, &stbuf);
 	}
 
 	/* check if we request a static file */
 	if (cn->is_static) {
-		if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH)) {
-			file_exists = stat(STATIC_ROOT"/favicon.ico", &stbuf);
-		}
-		else if (0 == strncasecmp(cn->url, ROBOTS_URL, ROBOTS_URL_LENGTH)) {
-			file_exists = stat(STATIC_ROOT"/robots.txt", &stbuf);
-		}
-		else {
-			file_exists = stat(cn->url, &stbuf);
-		}
-
 		if (file_exists == -1) {
 			//send_error(cn, 404);
 			printf("Sorry dude, didn't find the file: %s\n", cn->url);
@@ -372,17 +372,9 @@ write_head (struct cn_strct *cn)
 			return;
 		}
 
-		if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH)) {
-			cn->file_desc = open(STATIC_ROOT"/favicon.ico", O_RDONLY);
-		}
-		else if (0 == strncasecmp(cn->url, ROBOTS_URL, ROBOTS_URL_LENGTH)) {
-			cn->file_desc = open(STATIC_ROOT"/robots.txt", O_RDONLY);
-		}
-		else {
-			cn->file_desc = open(cn->url, O_RDONLY);
-		}
+		cn->file_desc = open(cn->url, O_RDONLY);
 
-		snprintf(buf, sizeof(buf),
+		cn->processed_bytes = snprintf(buf, sizeof(buf),
 			HTTP_VERSION" 200 OK\r\n"
 			"Server: %s\r\n"
 			"Content-Type: %s\r\n"
@@ -395,6 +387,7 @@ write_head (struct cn_strct *cn)
 			_Master_date
 			//ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
+		cn->url = url;
 		send(cn->net_socket, buf, strlen(buf), 0);
 
 		/* FIXME: we assume the head gets send of in one rush */
