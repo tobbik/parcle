@@ -423,7 +423,7 @@ buff_file (struct cn_strct *cn)
 	printf("\n\nbuffered:%d\n", rv);
 #endif
 
-	cn->data_buf = cn->data_buf_head;
+	cn->out_buf = cn->data_buf_head;
 
 	if (0 >= rv) {
 		close(cn->file_desc);
@@ -439,7 +439,7 @@ buff_file (struct cn_strct *cn)
 void
 send_file (struct cn_strct *cn)
 {
-	int rv = send (cn->net_socket, cn->data_buf,
+	int rv = send (cn->net_socket, cn->out_buf,
 		cn->processed_bytes, 0);
 
 #if DEBUG_VERBOSE == 1
@@ -458,7 +458,7 @@ send_file (struct cn_strct *cn)
 		/* Do nothing */
 	}
 	else {
-		cn->data_buf = cn->data_buf + rv;
+		cn->out_buf = cn->out_buf + rv;
 		cn->processed_bytes -= rv;
 	}
 }

@@ -23,10 +23,12 @@
 
 #ifdef HAVE_LUA
 static int      l_buffer_output        ( lua_State *L );
+static int      l_get_output_buffer    ( lua_State *L );
 
 /* set up the Lua bindings for C-functions */
 const struct luaL_reg app_lib [] = {
 	{"commit",   l_buffer_output},
+	{"prepare",  l_get_output_buffer},
 	{NULL,       NULL}
 };
 #else
@@ -95,10 +97,9 @@ void
 		lua_call(L, 1, 0);
 #else
 		c_response(cn);
-#endif
-
-		cn->data_buf        = cn->data_buf_head;
+		cn->out_buf         = cn->data_buf_head;
 		cn->processed_bytes = strlen(cn->data_buf_head);
+#endif
 
 		/* signal the select loop that we are done ... */
 		while (REQSTATE_SEND_FILE != cn->req_state) {
@@ -124,6 +125,18 @@ l_buffer_output (lua_State *L)
 
 	cn->processed_bytes = lua_strlen (L, 2);
 	strncpy( cn->data_buf_head, lua_tostring (L, 2), cn->processed_bytes );
+
+	return 0;
+}
+
+static int
+l_get_output_buffer (lua_State *L)
+{
+	struct cn_strct *cn  = NULL;
+	cn                   =  (struct cn_strct*) lua_touserdata(L, 1);
+
+	cn->processed_bytes = lua_strlen (L, 2);
+	cn->out_buf = lua_tolstring (L, 2, &cn->processed_bytes);
 
 	return 0;
 }
