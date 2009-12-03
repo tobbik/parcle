@@ -38,13 +38,13 @@ local function parse(s)
 			if '' ~= xarg then
 				table.insert(top, {tag=label, arg=parse_args(xarg), empty=true})
 			else
-				table.insert(top, {tag=label, empty=1})
+				table.insert(top, {tag=label, empty=true})
 			end
 		elseif c == "" then     -- start tag
 			if '' ~= xarg then
-				top = {tag=label, arg=parse_args(xarg)}
+				top = {tag=label, arg=parse_args(xarg), empty=false}
 			else
-				top = {tag=label}
+				top = {tag=label, empty=false}
 			end
 			table.insert(stack, top)   -- new level
 		else                    -- end tag
