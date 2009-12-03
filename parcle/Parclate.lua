@@ -36,10 +36,18 @@ local function parse(s)
 			table.insert(top, text)
 		end
 		if empty == "/" then    -- empty element tag
-			table.insert(top, {label=label, xarg=parse_args(xarg), empty=1})
+			if '' ~= xarg then
+				table.insert(top, {tag=label, arg=parse_args(xarg), empty=true})
+			else
+				table.insert(top, {tag=label, empty=1})
+			end
 		elseif c == "" then     -- start tag
-			top = {label=label, xarg=parse_args(xarg)}
-			table.insert(stack, top)     -- new level
+			if '' ~= xarg then
+				top = {tag=label, arg=parse_args(xarg)}
+			else
+				top = {tag=label}
+			end
+			table.insert(stack, top)   -- new level
 		else                    -- end tag
 			local toclose = table.remove(stack)  -- remove top
 			top = stack[#stack]
