@@ -60,7 +60,33 @@ local function parse(s)
 	return stack[1]
 end
 
-
+-- THE EXTRA's
+-- a pretty printer, helps to see errors in the table representation
+-- can be called by print(instance)
+local print_r -- pre-define as local -> called recursively
+print_r = function( t, indent, done )
+	local cl     = {}
+	local done   = done or {}
+	local indent = indent or ''
+	local nextIndent -- Storage for next indentation value
+	for key, value in pairs (t) do
+		if type (value) == 'table' and not done [value] then
+			nextIndent = nextIndent or
+				(indent .. string.rep(' ',string.len(tostring (key))+2))
+				-- Shortcut conditional allocation
+			done [value] = true
+			table.insert(cl, indent .. "[" .. tostring (key) .. "] => {\n")
+			table.insert(cl, print_r (value, nextIndent, done))
+			table.insert(cl, indent .. "}" .. '\n')
+		else
+			table.insert(cl,
+				indent .. "[" .. tostring (key) .. "] => _" .. tostring (value).."_\n"
+			)
+		end
+	end
+	return table.concat(cl, '')
+end
+Parclate.print_r = print_r
 
 -- constructor
 local new = function(self, s)
