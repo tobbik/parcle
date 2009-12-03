@@ -46,8 +46,8 @@ local function parse(s)
 			if #stack < 1 then
 				error("nothing to close with "..label)
 			end
-			if toclose.label ~= label then
-				error("trying to close "..toclose.label.." with "..label)
+			if toclose.tag ~= label then
+				error("trying to close _"..toclose.tag.."_ with _"..label.."_")
 			end
 			table.insert(top, toclose)
 		end
