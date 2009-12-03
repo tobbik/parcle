@@ -31,9 +31,8 @@ local function parse(s)
 	while true do
 		ni,j,c,label,xarg,empty = string.find(s, "<(%/?)([%w:]+)(.-)(%/?)>", i)
 		if not ni then break end
-		local text = string.sub(s, i, ni-1)
-		if not string.find(text, "^%s*$") then
-			table.insert(top, text)
+		if i ~= ni then
+			table.insert(top, string.sub(s, i, ni-1)) -- insert text chunk
 		end
 		if empty == "/" then    -- empty element tag
 			if '' ~= xarg then
@@ -61,9 +60,8 @@ local function parse(s)
 		end
 		i = j+1
 	end
-	local text = string.sub(s, i)
-	if not string.find(text, "^%s*$") then
-		table.insert(stack[#stack], text)
+	if i ~= #s then
+		table.insert(stack[#stack], string.sub(s, i)) -- insert text chunk
 	end
 	if #stack > 1 then
 		error("unclosed "..stack[stack.n].label)
