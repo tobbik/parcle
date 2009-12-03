@@ -11,6 +11,8 @@ local unpack       = unpack
 -- implementation
 local Parclate = {}
 
+-- THE PARSING
+-- helper to disect arguments of tags
 local function parse_args (s)
 	local arg = {}
 	string.gsub(s, "(%w+)=([\"'])(.-)%2", function (w, _, a)
@@ -19,14 +21,15 @@ local function parse_args (s)
 	return arg
 end
 
+-- Do the actual parsing aka. xml->table conversion
 local function parse(s)
 	local stack = {}
-	local top = {}
+	local top   = {}
 	table.insert(stack, top)
-	local ni,c,label,xarg, empty
+	local ni,c,label,xarg,empty
 	local i, j = 1, 1
 	while true do
-		ni,j,c,label,xarg, empty = string.find(s, "<(%/?)([%w:]+)(.-)(%/?)>", i)
+		ni,j,c,label,xarg,empty = string.find(s, "<(%/?)([%w:]+)(.-)(%/?)>", i)
 		if not ni then break end
 		local text = string.sub(s, i, ni-1)
 		if not string.find(text, "^%s*$") then
@@ -100,9 +103,6 @@ local new = function(self, s)
 	local instance = parse(s)
 	setmetatable(instance, self)
 	self.__index    = self
-	if b then
-		balance = b
-	end
 	return instance
 end
 Parclate.new = new
