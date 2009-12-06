@@ -13,7 +13,7 @@ local Parclate = {}
 
 -- THE PARSING
 -- helper to disect arguments of tags
-local function parse_args( s )
+local parse_args = function ( s )
 	local arg = {}
 	string.gsub(s, "(%w+)=([\"'])(.-)%2", function (w, _, a)
 	     arg[w] = a
@@ -22,7 +22,7 @@ local function parse_args( s )
 end
 
 -- Do the actual parsing aka. xml->table conversion
-local function parse( s )
+local parse = function ( s )
 	local stack = {}
 	local top   = {}
 	table.insert(stack, top)
@@ -54,7 +54,7 @@ local function parse( s )
 				error("nothing to close with "..label)
 			end
 			if toclose.tag ~= label then
-				error("trying to close _"..toclose.tag.."_ with _"..label.."_")
+				error('trying to close <'..toclose.tag..'> with <'..label..'>')
 			end
 			table.insert(top, toclose)
 		end
@@ -125,23 +125,25 @@ print_r = function( t, indent, done )
 	end
 	return table.concat(cl, '')
 end
-Parclate.print_r = print_r
 
--- constructor
-local new = function( self, s )
-	if type(s) ~= 'string' then
-		error('Parclate\s constructor expects a string argument.\n'..
-			'expected <string> but got <' .. type(s) ..'>'
-		)
-	elseif not s then
-		error('Parclate constructor must be called with an argument!')
+-- setup constructor Parclate() and __tostring method
+setmetatable(Parclate, {
+	-- constructor
+	__call = function( self, s )
+		if type(s) ~= 'string' then
+			error('Parclates constructor expects a string argument.\n'..
+				'expected <string> but got <' .. type(s) ..'>'
+			)
+		elseif not s then
+			error('Parclate constructor must be called with an argument!')
+		end
+		local instance = parse(s)
+		setmetatable(instance, self)
+		self.__index    = self
+		self.__tostring = print_r
+		return instance
 	end
-	local instance = parse(s)
-	setmetatable(instance, self)
-	self.__index    = self
-	return instance
-end
-Parclate.new = new
+})
 
 return Parclate
 -- vim: ts=4 sw=4 sts=4 sta tw=80 list

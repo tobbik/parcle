@@ -27,7 +27,7 @@ local template = [[
 ]]
 
 
-local t = Parclate:new(template)  -- gen tmpl representation from xml string
-print(t:print_r())
+local t = Parclate(template)  -- gen tmpl representation from xml string
+print(t)
 print(t:serialize())
 
