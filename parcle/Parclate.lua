@@ -60,9 +60,6 @@ local function parse(s)
 		end
 		i = j+1
 	end
-	if i ~= #s then
-		table.insert(stack[#stack], string.sub(s, i)) -- insert text chunk
-	end
 	if #stack > 1 then
 		error("unclosed "..stack[stack.n].label)
 	end
