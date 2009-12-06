@@ -13,7 +13,7 @@ local Parclate = {}
 
 -- THE PARSING
 -- helper to disect arguments of tags
-local function parse_args (s)
+local function parse_args( s )
 	local arg = {}
 	string.gsub(s, "(%w+)=([\"'])(.-)%2", function (w, _, a)
 	     arg[w] = a
@@ -22,7 +22,7 @@ local function parse_args (s)
 end
 
 -- Do the actual parsing aka. xml->table conversion
-local function parse(s)
+local function parse( s )
 	local stack = {}
 	local top   = {}
 	table.insert(stack, top)
@@ -66,6 +66,39 @@ local function parse(s)
 	return stack[1]
 end
 
+-- THE SERIALIZING
+-- recursive; serializes one table into (x)html syntax
+local s_tag -- pre-define as local -> called recursively
+s_tag = function ( t )
+	local cl = {}
+	if t.tag and t.arg then
+		table.insert(cl, string.format("<%s", t.tag))
+		for k,v in pairs(t.arg) do
+			table.insert(cl, string.format(' %s="%s"', k, v))
+		end
+		table.insert(cl, ">")
+	elseif t.tag then
+		table.insert(cl, string.format("<%s>", t.tag))
+	end
+	local len = #t
+	for n=1,len do
+		if 'table' == type(t[n]) then
+			table.insert(cl, s_tag( t[n]))
+		elseif 'string' == type(t[n]) then
+			table.insert(cl, t[n])
+		else
+			error("There is an error in the representation of the template")
+		end
+	end
+	-- close tag
+	if t.tag then
+		table.insert(cl, string.format("</%s>", t.tag))
+	end
+	return table.concat(cl,'')
+end
+Parclate.serialize = s_tag
+
+
 -- THE EXTRA's
 -- a pretty printer, helps to see errors in the table representation
 -- can be called by print(instance)
@@ -95,7 +128,7 @@ end
 Parclate.print_r = print_r
 
 -- constructor
-local new = function(self, s)
+local new = function( self, s )
 	if type(s) ~= 'string' then
 		error('Parclate\s constructor expects a string argument.\n'..
 			'expected <string> but got <' .. type(s) ..'>'
