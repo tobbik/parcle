@@ -15,7 +15,7 @@ local Parclate = {}
 -- helper to disect arguments of tags
 local parse_args = function ( s )
 	local arg = {}
-	string.gsub(s, "(%w+)=([\"'])(.-)%2", function (w, _, a)
+	string.gsub(s, '(%w+)=(["\'])(.-)%2', function (w, _, a)
 	     arg[w] = a
 	end)
 	return arg
@@ -29,18 +29,18 @@ local parse = function ( s )
 	local ni,c,label,xarg,empty
 	local i, j = 1, 1
 	while true do
-		ni,j,c,label,xarg,empty = string.find(s, "<(%/?)([%w:]+)(.-)(%/?)>", i)
+		ni,j,c,label,xarg,empty = string.find(s, '<(%/?)([%w:]+)(.-)(%/?)>', i)
 		if not ni then break end
-		if i ~= ni then
+		if i ~= ni then  -- if text is longer than 0 chars
 			table.insert(top, string.sub(s, i, ni-1)) -- insert text chunk
 		end
-		if empty == "/" then    -- empty element tag
+		if empty == '/' then    -- empty element tag
 			if '' ~= xarg then
 				table.insert(top, {tag=label, arg=parse_args(xarg), empty=true})
 			else
 				table.insert(top, {tag=label, empty=true})
 			end
-		elseif c == "" then     -- start tag
+		elseif c == '' then     -- start tag
 			if '' ~= xarg then
 				top = {tag=label, arg=parse_args(xarg), empty=false}
 			else
@@ -51,7 +51,7 @@ local parse = function ( s )
 			local toclose = table.remove(stack)  -- remove top
 			top = stack[#stack]
 			if #stack < 1 then
-				error("nothing to close with "..label)
+				error('nothing to close with <'..label..'>')
 			end
 			if toclose.tag ~= label then
 				error('trying to close <'..toclose.tag..'> with <'..label..'>')
@@ -61,7 +61,7 @@ local parse = function ( s )
 		i = j+1
 	end
 	if #stack > 1 then
-		error("unclosed "..stack[stack.n].label)
+		error('unclosed <'..stack[#stack].tag..'>')
 	end
 	return stack[1]
 end
@@ -72,13 +72,13 @@ local s_tag -- pre-define as local -> called recursively
 s_tag = function ( t )
 	local cl = {}
 	if t.tag and t.arg then
-		table.insert(cl, string.format("<%s", t.tag))
+		table.insert(cl, string.format('<%s', t.tag))
 		for k,v in pairs(t.arg) do
 			table.insert(cl, string.format(' %s="%s"', k, v))
 		end
 		table.insert(cl, ">")
 	elseif t.tag then
-		table.insert(cl, string.format("<%s>", t.tag))
+		table.insert(cl, string.format('<%s>', t.tag))
 	end
 	local len = #t
 	for n=1,len do
@@ -87,12 +87,12 @@ s_tag = function ( t )
 		elseif 'string' == type(t[n]) then
 			table.insert(cl, t[n])
 		else
-			error("There is an error in the representation of the template")
+			error('There is an error in the representation of the template')
 		end
 	end
 	-- close tag
 	if t.tag then
-		table.insert(cl, string.format("</%s>", t.tag))
+		table.insert(cl, string.format('</%s>', t.tag))
 	end
 	return table.concat(cl,'')
 end
