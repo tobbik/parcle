@@ -7,6 +7,9 @@ package.path = '../?.lua;'..package.path
 local Parclate = require('parcle.Parclate')
 
 local template = [[
+
+
+
 <html att="blah_arg" xml:lang="en" lang="en" >
 	<head>
 		<title>A Lua-generated dynamic page</title>
@@ -19,8 +22,8 @@ local template = [[
 		</script>
 	</head>
 	<body>
-		<b>I am the <i>first</i> line</b>: Amazing isn't it! <br/>
-		<b>I am the <i>second</i> line</b>: Amazing isn't it! <br/>
+		<b>I am <em>the </em><i>first</i> line</b>: Amazing isn't it! <br/>
+		<b>I am <em>the</em> <i>second</i> line</b>: Amazing isn't it! <br/>
 	</body>
 </html>
 
