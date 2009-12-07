@@ -80,12 +80,11 @@ s_tag = function ( t )
 	elseif t.tag then
 		table.insert(cl, string.format('<%s>', t.tag))
 	end
-	local len = #t
-	for n=1,len do
-		if 'table' == type(t[n]) then
-			table.insert(cl, s_tag( t[n]))
-		elseif 'string' == type(t[n]) then
-			table.insert(cl, t[n])
+	for k,v in ipairs(t) do
+		if 'table' == type(v) then
+			table.insert(cl, s_tag(v))
+		elseif 'string' == type(v) then
+			table.insert(cl, v)
 		else
 			error('There is an error in the representation of the template')
 		end
