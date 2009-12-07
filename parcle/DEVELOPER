@@ -43,24 +43,24 @@ There are many suggested implementations for OOP characteristics in Lua. Luas
 design by default enables to design a more prototype based inheritance and
 instantiation rather than a class->instance based design as it is widely known
 in the Java/C#/C++ world. For the sake of the omitted (not missing) "new"
-keyword in Lua, the blue PiL ("Programming in Lua")[#]_ suggest a syntax like
-this to instantiate new objects: instance = Classname:new() , where new() is a
-method on a table, by convention the constructor of the class. However, looking
-at other languages, especially python, instance = Classname() might be a
-cleaner/nicer way to call the constructor. Lua's meta-tables and the associated
-__call operator offers an excellent path to an implementation that makes this
-sort of syntactic sugar easy to achieve.
+keyword in Lua, the blue `PiL`_ suggest a syntax like this to instantiate new
+objects: instance = Classname:new() , where new() is a method on a table, by
+convention the constructor of the class. However, looking at other languages,
+especially python, instance = Classname() might be a cleaner/nicer way to call
+the constructor. Lua's meta-tables and the associated __call operator offers
+an excellent path to an implementation that makes this sort of syntactic sugar
+easy to achieve.
 
 Parcle's classes are NOT implemented using the module function. After reading
-the mailing list and the excellent _critique of the module function:
-http://lua-users.org/wiki/LuaModuleFunctionCritiqued available on the lua-users
-wiki, it seems most desireable to provide good encapsulation and allow to be
-flexible with names upon import, aka. local thisName=require('Classname')
+the mailing list and the excellent "critique of the module function"
+[modcrtique]_ available on the lua-users wiki, it seems most desireable to
+provide good encapsulation and allow to be flexible with names upon import, aka.
+local thisName=require('Classname')
 
 
-
-  [#] Roberto Ierusalimschy, "Programming in Lua", 1st edition, 2003, _OOP in
+  _PiL: Roberto Ierusalimschy, "Programming in Lua", 1st edition, 2003, _OOP in
   Lua: http://www.lua.org/pil/16.html
+  [#modcrtique]: http://lua-users.org/wiki/LuaModuleFunctionCritiqued 
 
 
 # vim: ts=4 sw=4 st=4 sta tw=80 ft=rest
