@@ -27,7 +27,7 @@ local template = [[
 		</div>
 
 		<ol l:if="struct.header and show_list">
-			<li l:for="title,link in pairs(links)">
+			<li l:for="title,link in pairs(links)" class="link_list">
 				<!-- A comment, shall be ignored -->
 				<a href="${link.url}">${title}</a>
 				posted by ${link.username} at ${link.time}
@@ -46,7 +46,7 @@ local template = [[
 
 local value = {
 	title   = 'My awesome little website',
-	struct  = {header = 'Great stuff from her on down', legal = 'whatever'},
+	struct  = {header = 'Great stuff from here on down', legal = 'whatever'},
 	show_list = true,
 	links   = {
 		Parcle = {username='Parcle', url='http://parcle.com', time='2009-12-04 15:24'},

@@ -13,12 +13,35 @@ local Parclate = {}
 
 -- THE PARSING
 -- helper to disect arguments of tags
-local parse_args = function ( s )
-	local arg = {}
+local parse_args = function ( s, tag, empty )
+	local args     = {}
+	local cmds     = {}
+	local haveargs = false
+	local havecmds = false
 	string.gsub(s, '([^%s="]+)=(["\'])(.-)%2', function (w, _, a)
-	     arg[w] = a
+		local ns,cmd = string.match(w,'^(l):(%w+)')
+		if ns and cmd then
+			havecmds  = true
+			cmds[cmd] = a
+		else
+			haveargs  = true
+			args[w]   = a
+		end
 	end)
-	return arg
+	if havecmds and haveargs then
+		return {tag=tag, arg=args, cmd=cmds, empty=empty}
+	elseif havecmds then
+		return {tag=tag, cmd=cmds, empty=empty}
+	elseif haveargs then
+		return {tag=tag, arg=args, empty=empty}
+	else
+		return {tag=tag, empty=empty}
+	end
+end
+
+-- a smarter way of finding tags than pattern matching, excludes quoted tags
+local find_close_tag = function ( s, i )
+
 end
 
 -- Do the actual parsing aka. xml->table conversion
@@ -36,13 +59,13 @@ local parse = function ( s )
 		end
 		if empty == '/' then    -- empty element tag
 			if '' ~= xarg then
-				table.insert(top, {tag=label, arg=parse_args(xarg), empty=true})
+				table.insert(top, parse_args(xarg, label, true))
 			else
 				table.insert(top, {tag=label, empty=true})
 			end
 		elseif c == '' then     -- start tag
 			if '' ~= xarg then
-				top = {tag=label, arg=parse_args(xarg), empty=false}
+				top = parse_args(xarg, label, false)
 			else
 				top = {tag=label, empty=false}
 			end
