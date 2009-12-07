@@ -25,9 +25,7 @@ local template = [[
 		<b>I am <em>the </em><i>first</i> line</b>: Amazing isn't it! <br/>
 		<b>I am <em>the</em> <i>second</i> line</b>: Amazing isn't it! <br/>
 	</body>
-</html>
-
-]]
+</html>]]
 
 
 local t = Parclate(template)  -- gen tmpl representation from xml string

@@ -15,7 +15,7 @@ local Parclate = {}
 -- helper to disect arguments of tags
 local parse_args = function ( s )
 	local arg = {}
-	string.gsub(s, '(%w+)=(["\'])(.-)%2', function (w, _, a)
+	string.gsub(s, '([^%s="]+)=(["\'])(.-)%2', function (w, _, a)
 	     arg[w] = a
 	end)
 	return arg
