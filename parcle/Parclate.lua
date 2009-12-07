@@ -39,11 +39,6 @@ local parse_args = function ( s, tag, empty )
 	end
 end
 
--- a smarter way of finding tags than pattern matching, excludes quoted tags
-local find_close_tag = function ( s, i )
-
-end
-
 -- Do the actual parsing aka. xml->table conversion
 local parse = function ( s )
 	local stack = {}
@@ -90,7 +85,7 @@ local parse = function ( s )
 end
 
 -- THE SERIALIZING
--- serializes one table into (x)html syntax
+-- serializes one table into (x)html template-less syntax (no l:* commands)
 local serialize = function (self)
 	local cl = {}
 	local s_tag -- pre-define as local -> called recursively
@@ -157,6 +152,7 @@ print_r = function( self, indent, done )
 	return table.concat(cl, '')
 end
 
+-- THE CLASS STUFF
 -- setup constructor Parclate() and __tostring method
 setmetatable(Parclate, {
 	-- constructor
