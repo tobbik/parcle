@@ -71,14 +71,18 @@ end
 local s_tag -- pre-define as local -> called recursively
 s_tag = function ( t )
 	local cl = {}
-	if t.tag and t.arg then
+	if t.tag then
 		table.insert(cl, string.format('<%s', t.tag))
+	end
+	if t.arg then
 		for k,v in pairs(t.arg) do
 			table.insert(cl, string.format(' %s="%s"', k, v))
 		end
-		table.insert(cl, ">")
+	end
+	if t.empty then
+		return table.concat(cl, '') .. ' />'
 	elseif t.tag then
-		table.insert(cl, string.format('<%s>', t.tag))
+		table.insert(cl, '>')
 	end
 	for k,v in ipairs(t) do
 		if 'table' == type(v) then
