@@ -68,35 +68,39 @@ end
 
 -- THE SERIALIZING
 -- recursive; serializes one table into (x)html syntax
-local s_tag -- pre-define as local -> called recursively
-s_tag = function ( t )
+local serialize = function (self)
 	local cl = {}
-	if t.tag then
-		table.insert(cl, string.format('<%s', t.tag))
-	end
-	if t.arg then
-		for k,v in pairs(t.arg) do
-			table.insert(cl, string.format(' %s="%s"', k, v))
+	local s_tag -- pre-define as local -> called recursively
+	s_tag = function (t)
+		if t.tag then
+			table.insert(cl,string.format('<%s', t.tag))
+		end
+		if t.arg then
+			for k,v in pairs(t.arg) do
+				table.insert(cl, string.format(' %s="%s"', k, v))
+			end
+		end
+		if t.empty then
+			table.insert(cl, ' />')
+			return
+		elseif t.arg then
+			table.insert(cl, '>')
+		end
+		for k,v in ipairs(t) do
+			if 'table' == type(v) then
+				s_tag(v)
+			elseif 'string' == type(v) then
+				table.insert(cl, v)
+			else
+				error('There is an error in the representation of the template')
+			end
+		end
+		-- close tag
+		if t.tag then
+			table.insert(cl, string.format('</%s>', t.tag))
 		end
 	end
-	if t.empty then
-		return table.concat(cl, '') .. ' />'
-	elseif t.tag then
-		table.insert(cl, '>')
-	end
-	for k,v in ipairs(t) do
-		if 'table' == type(v) then
-			table.insert(cl, s_tag(v))
-		elseif 'string' == type(v) then
-			table.insert(cl, v)
-		else
-			error('There is an error in the representation of the template')
-		end
-	end
-	-- close tag
-	if t.tag then
-		table.insert(cl, string.format('</%s>', t.tag))
-	end
+	s_tag(self)
 	return table.concat(cl,'')
 end
 Parclate.serialize = s_tag
