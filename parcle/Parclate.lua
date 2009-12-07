@@ -67,7 +67,7 @@ local parse = function ( s )
 end
 
 -- THE SERIALIZING
--- recursive; serializes one table into (x)html syntax
+-- serializes one table into (x)html syntax
 local serialize = function (self)
 	local cl = {}
 	local s_tag -- pre-define as local -> called recursively
@@ -83,7 +83,7 @@ local serialize = function (self)
 		if t.empty then
 			table.insert(cl, ' />')
 			return
-		elseif t.arg then
+		elseif t.tag then
 			table.insert(cl, '>')
 		end
 		for k,v in ipairs(t) do
@@ -99,7 +99,8 @@ local serialize = function (self)
 		if t.tag then
 			table.insert(cl, string.format('</%s>', t.tag))
 		end
-	end
+		return
+	end           -- recursive lexical s_tag
 	s_tag(self)
 	return table.concat(cl,'')
 end
