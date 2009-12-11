@@ -11,9 +11,9 @@ local template = [[
    "http://www.w3.org/TR/1999/REC-html401-19991224/loose.dtd">
 <html lang="el" xml:lang="en" xmlns="http://www.w3.org/1999/xhtml">
 	<head>
-		<title>$title</title>
+		<title>${title}</title>
 		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-		<!-- scripts are tougther to parse, so are xml comments -->
+		<!-- scripts are tougher to parse, so are xml comments -->
 		<script type="text/javascript" language="JavaScript1.5">
 			var long = 123;
 			if (long%15 &gt; 7) {
@@ -27,9 +27,9 @@ local template = [[
 		</div>
 
 		<ol l:if="struct.header and show_list">
-			<li l:for="title,link in pairs(links)" class="link_list">
+			<li l:for="name,link in pairs(links)" class="link_list">
 				<!-- A comment, shall be ignored -->
-				<a href="${link.url}">${title}</a>
+				<a href="${link.url}">${name}</a> ${title}
 				posted by ${link.username} at ${link.time}
 			</li>
 		</ol>
@@ -44,6 +44,11 @@ local template = [[
 </html>
 ]]
 
+local t = Parclate(template)  -- gen tmpl representation from xml string
+print(t)                      -- output table of tmpl representation
+print(t:serialize())          -- output the template minus the command (l:*) tags
+t:compile()                   -- create the source code that serializes the template
+
 local value = {
 	title   = 'My awesome little website',
 	struct  = {header = 'Great stuff from here on down', legal = 'whatever'},
@@ -55,8 +60,4 @@ local value = {
 		Knowledge = {username='Dummy', url='http://ajaxinan.com', time='2009-12-04 11:56'}
 	}
 }
-
-local t = Parclate(template)  -- gen tmpl representation from xml string
-print(t)
-print(t:serialize())
 

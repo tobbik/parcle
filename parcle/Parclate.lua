@@ -120,6 +120,107 @@ local serialize = function (self)
 end
 Parclate.serialize = serialize
 
+-- THE COMPILER
+-- #private: create lua function source code from the arguments
+local dispatch_command = function(cmd, tmpl)
+	for c,exp in pairs(cmd) do
+		if 'if' == c then
+			table.insert(tmpl, string.format('\tif %s then\n\t\t', exp) )
+		end
+		if 'for' == c then
+			table.insert(tmpl, string.format('\tfor %s do\n\t\t', exp) )
+		end
+	end
+end
+
+-- #private: helper to close open functions in the compiled chunk
+local dispatch_command_end = function(cmd, tmpl)
+	for c,_ in pairs(cmd) do
+		if 'if' == c or 'for' == c then
+			table.insert(tmpl, '\tend\n')
+		end
+	end
+end
+
+-- #private: combine the last set of continous strings into one chunk
+local compile_chunk = function(tmpl, buffer, format_args)
+	if 0 == #format_args then
+		table.insert(tmpl,
+			'\tinsert(x,[[' .. table.concat(buffer,'') .. ']])\n'
+		)
+	else
+		table.insert(tmpl,
+			'\tinsert(x, format([[' ..
+				table.concat(buffer,'') ..
+			']],'.. table.concat(format_args, ',') ..'))\n'
+		)
+		format_args=nil
+	end
+	buffer=nil
+end
+
+-- #public:
+local compile = function (self)
+	local tmpl        = {'local render = function(self)\n\tlocal x={}\n'}
+	local buffer      = {}
+	local format_args = {}
+	local c_tag         -- predeclare local for recursive calls
+	c_tag = function(t)
+		if t.cmd then
+			compile_chunk(tmpl, buffer, format_args)
+			format_args={}
+			buffer={}
+			dispatch_command(t.cmd, tmpl)
+		end
+		if t.tag then
+			table.insert(buffer, string.format('<%s', t.tag))
+			if t.arg then
+				for k,v in pairs(t.arg) do
+					table.insert(buffer, string.format(' %s="%s"', k, v))
+				end
+			end
+			table.insert(buffer, t.empty and ' />' or '>')
+		end
+		if t.empty then
+			if t.cmd then
+				dispatch_command_end(t.cmd, tmpl)
+			end
+			return
+		end
+		for k,v in ipairs(t) do
+			if 'table' == type(v) then
+				c_tag(v)
+			elseif 'string' == type(v) then
+				local s = string.gsub(v, '${([%w%.]+)}?', function (f)
+					table.insert( format_args, f )
+					return '%s'
+				end)
+				table.insert(buffer, s)
+			else
+				error('There is an error in the representation of the template')
+			end
+		end
+		-- close tag
+		if t.tag then
+			table.insert(buffer, string.format('</%s>', t.tag))
+		end
+		if t.cmd then
+			compile_chunk(tmpl, buffer, format_args)
+			format_args={}
+			buffer={}
+			dispatch_command_end(t.cmd, tmpl)
+		end
+		return
+	end
+	-- start the actual execution
+	c_tag(self)
+	-- add last chunk to templ table
+	compile_chunk(tmpl, buffer, format_args)
+	table.insert(tmpl, "\treturn concat(x,'')\nend\n")
+	local r = table.concat(tmpl,'')
+	print(r)
+end
+Parclate.compile = compile
 
 -- THE EXTRA's
 -- a pretty printer, helps to see errors in the table representation
