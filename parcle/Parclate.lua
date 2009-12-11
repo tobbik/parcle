@@ -91,18 +91,14 @@ local serialize = function (self)
 	local s_tag -- pre-define as local -> called recursively
 	s_tag = function (t)
 		if t.tag then
-			table.insert(cl,string.format('<%s', t.tag))
-		end
-		if t.arg then
-			for k,v in pairs(t.arg) do
-				table.insert(cl, string.format(' %s="%s"', k, v))
+			table.insert(cl, string.format('<%s', t.tag))
+			if t.arg then
+				for k,v in pairs(t.arg) do
+					table.insert(cl, string.format(' %s="%s"', k, v))
+				end
 			end
-		end
-		if t.empty then
-			table.insert(cl, ' />')
-			return
-		elseif t.tag then
-			table.insert(cl, '>')
+			table.insert(cl, t.empty and ' />' or '>')
+			if t.empty then return end
 		end
 		for k,v in ipairs(t) do
 			if 'table' == type(v) then
