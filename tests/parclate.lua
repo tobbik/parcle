@@ -25,6 +25,7 @@ local template = [[
 		<div id="header">
 			<h1>${struct.header}</h1>
 		</div>
+		<p> Show me the funk: ${func()}</p>
 
 		<ol l:if="struct.header and show_list">
 			<li l:for="name,link in pairs(links)" class="link_list">
@@ -59,4 +60,5 @@ x.links     = {
 	Design = {username='Ursus', url='http://maxdesign.com.au', time='2009-12-04 14:13'},
 	Knowledge = {username='Dummy', url='http://ajaxinan.com', time='2009-12-04 11:56'}
 }
+x.func = function() return 'value from func.' end
 print(x)
