@@ -84,8 +84,12 @@ local parse = function ( s )
 	return stack[1]
 end
 
--- THE SERIALIZING
--- serializes one table into (x)html template-less syntax (no l:* commands)
+--[[           _       _ _
+ ___  ___ _ __(_) __ _| (_)_______
+/ __|/ _ \ '__| |/ _` | | |_  / _ \
+\__ \  __/ |  | | (_| | | |/ /  __/
+|___/\___|_|  |_|\__,_|_|_/___\___| --]]
+-- serializes the representation back into (x)html template
 local serialize = function (self)
 	local cl = {}
 	local s_tag -- pre-define as local -> called recursively
@@ -95,6 +99,11 @@ local serialize = function (self)
 			if t.arg then
 				for k,v in pairs(t.arg) do
 					table.insert(cl, string.format(' %s="%s"', k, v))
+				end
+			end
+			if t.cmd then
+				for c,e in pairs(t.cmd) do
+					table.insert(cl, string.format(' l:%s="%s"', c, e))
 				end
 			end
 			table.insert(cl, t.empty and ' />' or '>')
@@ -120,7 +129,11 @@ local serialize = function (self)
 end
 Parclate.serialize = serialize
 
--- THE COMPILER
+--[[         __ _ _
+| |_ ___    / _(_) | ___
+| __/ _ \  | |_| | |/ _ \
+| || (_) | |  _| | |  __/
+ \__\___/  |_| |_|_|\___|--]]
 -- #private: create lua function source code from the arguments
 local dispatch_command = function(cmd, tmpl)
 	for c,exp in pairs(cmd) do
@@ -143,7 +156,7 @@ local dispatch_command_end = function(cmd, tmpl)
 end
 
 -- #private: combine the last set of continous strings into one chunk
-local compile_chunk = function(tmpl, buffer, f_args)
+local compile_buffer = function(tmpl, buffer, f_args)
 	if 0 == #f_args then
 		table.insert(tmpl,
 			'\tinsert(x,[[' .. table.concat(buffer,'') .. ']])\n'
@@ -159,18 +172,19 @@ local compile_chunk = function(tmpl, buffer, f_args)
 	buffer=nil
 end
 
--- #public:
-local compile = function (self)
-	local tmpl   = {'local t={}\n\nlocal r = function(self)\n\tlocal x={}\n'}
+-- #private: renders just the chunk, that actully flushes the template
+-- @return: table, that needs to be table.concat
+local compile_chunk = function (r)
+	local c_buf = {"\tlocal x={'','','','','','','','',''}\n"}
 	local buffer = {}
 	local f_args = {}
 	local c_tag         -- predeclare local for recursive calls
 	c_tag = function(t)
 		if t.cmd then
-			compile_chunk(tmpl, buffer, f_args)
+			compile_buffer(c_buf, buffer, f_args)
 			f_args={}
 			buffer={}
-			dispatch_command(t.cmd, tmpl)
+			dispatch_command(t.cmd, c_buf)
 		end
 		if t.tag then
 			table.insert(buffer, string.format('<%s', t.tag))
@@ -183,7 +197,7 @@ local compile = function (self)
 		end
 		if t.empty then
 			if t.cmd then
-				dispatch_command_end(t.cmd, tmpl)
+				dispatch_command_end(t.cmd, c_buf)
 			end
 			return
 		end
@@ -206,50 +220,41 @@ local compile = function (self)
 			table.insert(buffer, string.format('</%s>', t.tag))
 		end
 		if t.cmd then
-			compile_chunk(tmpl, buffer, f_args)
+			compile_buffer(c_buf, buffer, f_args)
 			f_args={}
 			buffer={}
-			dispatch_command_end(t.cmd, tmpl)
+			dispatch_command_end(t.cmd, c_buf)
 		end
 		return
 	end
 	-- start the actual execution
-	c_tag(self)
-	-- add last chunk to tmpl table
-	compile_chunk(tmpl, buffer, f_args)
-	table.insert(tmpl, "\treturn concat(x,'')\nend\n")
-	table.insert(tmpl, [[
-setmetatable(t, {
-	-- constructor
-	__call = function( self, v )
-		local v = v or {}
-		if type(v) ~= 'table' then
-			error('A Parclates instance constructor expects a table as argument.\n'..
-				'expected <table> but got <' .. type(v) ..'>'
-			)
-		elseif nil ~= v.render then
-			error('A Parclates instance cannot contain a key called "render".\n'..
-				' "render" has the value '.. v.render
-			)
-		end
-		setmetatable(v, self)
-		self.__index    = self
-		self.__tostring = r
-		-- restrict available functions in the template
-		v.print  = print
-		v.format = string.format
-		v.insert = table.insert
-		v.concat = table.concat
-		v.pairs  = pairs
-		v.ipairs = ipairs
-		setfenv(r,v)
-		return v
-	end
-})
+	c_tag(r)
+	-- add last chunk to c_buf table
+	compile_buffer(c_buf, buffer, f_args)
+	table.insert(c_buf, "\treturn concat(x,'')\n")
+	return c_buf
+end
 
-return t]])
-	local r = table.concat(tmpl,'')
-	print(r)
+--[[                       _ _
+  ___ ___  _ __ ___  _ __ (_) | ___
+ / __/ _ \| '_ ` _ \| '_ \| | |/ _ \
+| (_| (_) | | | | | | |_) | | |  __/
+ \___\___/|_| |_| |_| .__/|_|_|\___|
+                    |_|              --]]
+-- #public: create a table that represents just the compiled template
+local compile = function(self)
+	local tmpl  = {
+		print  = print,
+		format = string.format,
+		insert = table.insert,
+		concat = table.concat,
+		pairs  = pairs,
+		ipairs = ipairs
+	}
+	local chunk = loadstring( table.concat(compile_chunk(self), '') )
+	setmetatable(tmpl, { __tostring = chunk })
+	setfenv(chunk, tmpl)
+	return tmpl
 end
 Parclate.compile = compile
 

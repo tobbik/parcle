@@ -47,17 +47,15 @@ local template = [[
 local t = Parclate(template)  -- gen tmpl representation from xml string
 print(t)                      -- output table of tmpl representation
 print(t:serialize())          -- output the template minus the command (l:*) tags
-t:compile()                   -- create the source code that serializes the template
+local x= t:compile()          -- create the source code that serializes the template
 
-local value = {
-	title   = 'My awesome little website',
-	struct  = {header = 'Great stuff from here on down', legal = 'whatever'},
-	show_list = true,
-	links   = {
-		Parcle = {username='Parcle', url='http://parcle.com', time='2009-12-04 15:24'},
-		Google = {username='Probiwan Kenobi', url='http://google.ca', time='2009-12-04 13:24'},
-		Design = {username='Ursus', url='http://maxdesign.com.au', time='2009-12-04 14:13'},
-		Knowledge = {username='Dummy', url='http://ajaxinan.com', time='2009-12-04 11:56'}
-	}
+x.title     = 'My awesome little website'
+x.struct    = { header = 'Great stuff from here on down', legal = 'whatever' }
+x.show_list = true
+x.links     = {
+	Parcle = {username='Parcle', url='http://parcle.com', time='2009-12-04 15:24'},
+	Google = {username='Probiwan Kenobi', url='http://google.ca', time='2009-12-04 13:24'},
+	Design = {username='Ursus', url='http://maxdesign.com.au', time='2009-12-04 14:13'},
+	Knowledge = {username='Dummy', url='http://ajaxinan.com', time='2009-12-04 11:56'}
 }
-
+print(x)
