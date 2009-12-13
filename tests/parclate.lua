@@ -45,11 +45,10 @@ local template = [[
 </html>
 ]]
 
-local x = Parclate(template):compile()  -- gen tmpl representation from xml string
--- print(t)                      -- output table of tmpl representation
--- print(t:serialize())          -- output the template minus the command (l:*) tags
--- print(t:to_file())            -- output the template minus the command (l:*) tags
--- local x= t:compile()          -- create the source code that serializes the template
+local t = Parclate(template)  -- gen tmpl representation from xml string
+print(t)                      -- output table of tmpl representation
+-- print(x:serialize())          -- output the template minus the command (l:*) tags
+local x= t:compile()          -- create the source code that serializes the template
 
 x.title     = 'My awesome little website'
 x.struct    = { header = 'Great stuff from here on down', legal = 'whatever' }
@@ -77,7 +76,7 @@ local ts2 = [[
 </body>
 </html>
 ]]
-local y = Parclate(ts2):compile()  -- gen tmpl representation from xml string
+local y = Parclate(ts2)()  -- gen tmpl representation from xml string
 
 y.title     = 'An entirely different webtitle'
 y.numbers   = function ()

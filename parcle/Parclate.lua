@@ -332,6 +332,7 @@ print_r = function( self, indent, done )
 	end
 	return table.concat(cl, '')
 end
+Parclate.debug = print_r
 
 -- THE CLASS STUFF
 -- setup constructor Parclate() and __tostring method
@@ -348,7 +349,8 @@ setmetatable(Parclate, {
 		local instance = parse(s)
 		setmetatable(instance, self)
 		self.__index    = self
-		self.__tostring = print_r
+		self.__tostring = to_file
+		self.__call     = compile
 		return instance
 	end
 })
