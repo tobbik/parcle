@@ -10,8 +10,21 @@ local unpack       = unpack
 
 -- implementation
 local Parclate = {}
+-- some class variable (private)
+-- the generic functionality of a compiled template 
+local _Base_tmpl  = {
+	format = string.format,
+	insert = table.insert,
+	concat = table.concat,
+	pairs  = pairs,
+	ipairs = ipairs
+}
 
--- THE PARSING
+--[[_   __ _ _ __ ___  ___
+| '_ \ / _` | '__/ __|/ _ \
+| |_) | (_| | |  \__ \  __/
+| .__/ \__,_|_|  |___/\___|
+|_|  --]]
 -- helper to disect arguments of tags
 local parse_args = function ( s, tag, empty )
 	local args     = {}
@@ -248,11 +261,9 @@ local compile_chunk = function (r)
 	return c_buf
 end
 
--- #public: generate the string for a file which is a compile template
+-- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
-	local chunk = table.concat(compile_chunk(self))
-	return string.format([[local tmpl  = {
-	print  = print,
+	return string.format([[local t  = {
 	format = string.format,
 	insert = table.insert,
 	concat = table.concat,
@@ -262,9 +273,9 @@ local to_file = function(self)
 local r = function()
 %s
 end
-setmetatable(tmpl, { __tostring = r })
-setfenv(r, tmpl)
-return tmpl]], table.concat(compile_chunk(self)) )
+setmetatable(t, { __tostring = r })
+setfenv(r, t)
+return t]], table.concat(compile_chunk(self)) )
 end
 Parclate.to_file = to_file
 
@@ -276,18 +287,22 @@ Parclate.to_file = to_file
                     |_|              --]]
 -- #public: create a table that represents just the compiled template
 local compile = function(self)
-	local tmpl  = {
-		print  = print,
-		format = string.format,
-		insert = table.insert,
-		concat = table.concat,
-		pairs  = pairs,
-		ipairs = ipairs
-	}
+	local t= {}
+	for k,v in pairs(_Base_tmpl) do
+		t[k]=v
+	end
+	-- call() the template to delete all assigned values (for reuse)
+	local flush = function(self)
+		for k,v in pairs(self) do
+			if not _Base_tmpl[k] then
+				self[k] = nil
+			end
+		end
+	end
 	local chunk = loadstring( table.concat(compile_chunk(self), '') )
-	setmetatable(tmpl, { __tostring = chunk })
-	setfenv(chunk, tmpl)
-	return tmpl
+	setmetatable(t, { __tostring = chunk, __call = flush })
+	setfenv(chunk, t)
+	return t
 end
 Parclate.compile = compile
 

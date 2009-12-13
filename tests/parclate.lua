@@ -45,11 +45,11 @@ local template = [[
 </html>
 ]]
 
-local t = Parclate(template)  -- gen tmpl representation from xml string
-print(t)                      -- output table of tmpl representation
-print(t:serialize())          -- output the template minus the command (l:*) tags
-print(t:to_file())            -- output the template minus the command (l:*) tags
-local x= t:compile()          -- create the source code that serializes the template
+local x = Parclate(template):compile()  -- gen tmpl representation from xml string
+-- print(t)                      -- output table of tmpl representation
+-- print(t:serialize())          -- output the template minus the command (l:*) tags
+-- print(t:to_file())            -- output the template minus the command (l:*) tags
+-- local x= t:compile()          -- create the source code that serializes the template
 
 x.title     = 'My awesome little website'
 x.struct    = { header = 'Great stuff from here on down', legal = 'whatever' }
@@ -62,3 +62,31 @@ x.links     = {
 }
 x.func = function() return 'value from func.' end
 print(x)
+x()
+
+local ts2 = [[
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" >
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" >
+<head>
+  <title>${title}</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+</head>
+<body>
+  <b l:for="k in numbers()">I am the <i>${k}</i> line</br /></b>
+</body>
+</html>
+]]
+local y = Parclate(ts2):compile()  -- gen tmpl representation from xml string
+
+y.title     = 'An entirely different webtitle'
+y.numbers   = function ()
+	local i=0
+	local t={'first','second','third','fourth','fifth','sixth'}
+	return function()
+		i = i + 1
+		if t[i] then return t[i] end
+	end
+end
+print(y)
+y()
