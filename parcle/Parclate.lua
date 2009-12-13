@@ -235,6 +235,26 @@ local compile_chunk = function (r)
 	return c_buf
 end
 
+-- #public: generate the string for a file which is a compile template
+local to_file = function(self)
+	local chunk = table.concat(compile_chunk(self))
+	return string.format([[local tmpl  = {
+	print  = print,
+	format = string.format,
+	insert = table.insert,
+	concat = table.concat,
+	pairs  = pairs,
+	ipairs = ipairs
+}
+local r = function()
+%s
+end
+setmetatable(tmpl, { __tostring = r })
+setfenv(r, tmpl)
+return tmpl]], table.concat(compile_chunk(self)) )
+end
+Parclate.to_file = to_file
+
 --[[                       _ _
   ___ ___  _ __ ___  _ __ (_) | ___
  / __/ _ \| '_ ` _ \| '_ \| | |/ _ \

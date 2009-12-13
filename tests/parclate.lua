@@ -47,6 +47,7 @@ local template = [[
 local t = Parclate(template)  -- gen tmpl representation from xml string
 print(t)                      -- output table of tmpl representation
 print(t:serialize())          -- output the template minus the command (l:*) tags
+print(t:to_file())            -- output the template minus the command (l:*) tags
 local x= t:compile()          -- create the source code that serializes the template
 
 x.title     = 'My awesome little website'
