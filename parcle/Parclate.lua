@@ -173,17 +173,19 @@ local compile_buffer = function(c_buf, buffer, f_args)
 end
 
 -- #private: renders just the chunk, that actully flushes the template
--- @return: table, that needs to be table.concat
+-- @return: table, that needs to be table.concat()
 local compile_chunk = function (r)
-	local c_buf = {"\tlocal x={'','','','','','','','',''}\n"}
+	local c_buf = {}
 	local buffer = {}
 	local f_args = {}
+	local chunk_cnt = 0
 	local c_tag         -- predeclare local for recursive calls
 	c_tag = function(t)
 		if t.cmd then
 			compile_buffer(c_buf, buffer, f_args)
 			f_args={}
 			buffer={}
+			chunk_cnt=chunk_cnt+1
 			dispatch_command(t.cmd, c_buf)
 		end
 		if t.tag then
@@ -223,6 +225,7 @@ local compile_chunk = function (r)
 			compile_buffer(c_buf, buffer, f_args)
 			f_args={}
 			buffer={}
+			chunk_cnt=chunk_cnt+1
 			dispatch_command_end(t.cmd, c_buf)
 		end
 		return
@@ -231,7 +234,17 @@ local compile_chunk = function (r)
 	c_tag(r)
 	-- add last chunk to c_buf table
 	compile_buffer(c_buf, buffer, f_args)
-	table.insert(c_buf, "\treturn concat(x,'')\n")
+	chunk_cnt=chunk_cnt+1
+	table.insert(c_buf, "\treturn concat(x,'')")
+	table.insert(c_buf,1,'}\n')
+	-- prefill the array with a safe amount of empty slots to avoid rehashing
+	--   - excessive for loops will throw cause problems
+	local empties = 1+math.pow(2, (math.ceil(math.log(chunk_cnt)/math.log(2))+1))
+	for i=1,empties do
+		local addy = (i==1) and "''" or "'',"
+		table.insert(c_buf,1,addy)
+	end
+	table.insert(c_buf,1,'\tlocal x={')
 	return c_buf
 end
 
