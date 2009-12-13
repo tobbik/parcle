@@ -135,34 +135,34 @@ Parclate.serialize = serialize
 | || (_) | |  _| | |  __/
  \__\___/  |_| |_|_|\___|--]]
 -- #private: create lua function source code from the arguments
-local dispatch_command = function(cmd, tmpl)
+local dispatch_command = function(cmd, c_buf)
 	for c,exp in pairs(cmd) do
 		if 'if' == c then
-			table.insert(tmpl, string.format('\tif %s then\n\t\t', exp) )
+			table.insert(c_buf, string.format('\tif %s then\n\t\t', exp) )
 		end
 		if 'for' == c then
-			table.insert(tmpl, string.format('\tfor %s do\n\t\t', exp) )
+			table.insert(c_buf, string.format('\tfor %s do\n\t\t', exp) )
 		end
 	end
 end
 
 -- #private: helper to close open functions in the compiled chunk
-local dispatch_command_end = function(cmd, tmpl)
+local dispatch_command_end = function(cmd, c_buf)
 	for c,_ in pairs(cmd) do
 		if 'if' == c or 'for' == c then
-			table.insert(tmpl, '\tend\n')
+			table.insert(c_buf, '\tend\n')
 		end
 	end
 end
 
 -- #private: combine the last set of continous strings into one chunk
-local compile_buffer = function(tmpl, buffer, f_args)
+local compile_buffer = function(c_buf, buffer, f_args)
 	if 0 == #f_args then
-		table.insert(tmpl,
+		table.insert(c_buf,
 			'\tinsert(x,[[' .. table.concat(buffer,'') .. ']])\n'
 		)
 	else
-		table.insert(tmpl,
+		table.insert(c_buf,
 			'\tinsert(x, format([[' ..
 				table.concat(buffer,'') ..
 			']],'.. table.concat(f_args, ',') ..'))\n'
