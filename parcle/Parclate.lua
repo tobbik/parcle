@@ -10,15 +10,6 @@ local unpack       = unpack
 
 -- implementation
 local Parclate = {}
--- some class variable (private)
--- the generic functionality of a compiled template 
-local _Base_tmpl  = {
-	format = string.format,
-	insert = table.insert,
-	concat = table.concat,
-	pairs  = pairs,
-	ipairs = ipairs
-}
 
 --[[_   __ _ _ __ ___  ___
 | '_ \ / _` | '__/ __|/ _ \
@@ -263,16 +254,14 @@ end
 
 -- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
-	return string.format([[local t  = {
-	format = string.format,
-	insert = table.insert,
-	concat = table.concat,
-	pairs  = pairs,
-	ipairs = ipairs
-}
+	return string.format([[local t,t1  = {
+	format = string.format, pairs  = pairs, ipairs = ipairs,
+	concat = table.concat,  insert = table.insert
+}, {format = string.format, pairs  = pairs, ipairs = ipairs,
+	concat = table.concat,  insert = table.insert }
 local f = function(self)
 	for k,v in pairs(self) do
-		if not _Base_tmpl[k] then
+		if not t1[k] then
 			self[k] = nil
 		end
 	end
@@ -294,15 +283,15 @@ Parclate.to_file = to_file
                     |_|              --]]
 -- #public: create a table that represents just the compiled template
 local compile = function(self)
-	local t= {}
-	-- shallow copy of base template
-	for k,v in pairs(_Base_tmpl) do
-		t[k]=v
-	end
+	local t1,t ={
+		format = string.format, pairs = pairs, ipairs = ipairs,
+		concat = table.concat,  insert = table.insert
+	},{ format = string.format, pairs = pairs, ipairs = ipairs,
+		concat = table.concat,  insert = table.insert }
 	-- call() the template to delete all assigned values (for reuse)
 	local flush = function(self)
 		for k,v in pairs(self) do
-			if not _Base_tmpl[k] then
+			if not t1[k] then
 				self[k] = nil
 			end
 		end
