@@ -63,6 +63,19 @@ x.func = function() return 'value from func.' end
 print(x)
 x()
 
+
+-- nested templates 
+local ts1 ='<b l:for="k in numbers()">I am the <i>${k}</i> line</br /></b>\n'
+local a = Parclate(ts1)()  -- gen tmpl representation from xml string
+a.numbers   = function ()
+	local i=0
+	local t={'first','second','third','fourth','fifth','sixth'}
+	return function()
+		i = i + 1
+		if t[i] then return t[i] end
+	end
+end
+
 local ts2 = [[
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" >
@@ -72,20 +85,12 @@ local ts2 = [[
   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 </head>
 <body>
-  <b l:for="k in numbers()">I am the <i>${k}</i> line</br /></b>
+  ${nestedloop}
 </body>
 </html>
 ]]
-local y = Parclate(ts2)()  -- gen tmpl representation from xml string
+local b = Parclate(ts2)()  -- gen tmpl representation from xml string
 
-y.title     = 'An entirely different webtitle'
-y.numbers   = function ()
-	local i=0
-	local t={'first','second','third','fourth','fifth','sixth'}
-	return function()
-		i = i + 1
-		if t[i] then return t[i] end
-	end
-end
-print(y)
-y()
+b.title      = 'An entirely different webtitle'
+b.nestedloop = tostring(a)
+print(b)

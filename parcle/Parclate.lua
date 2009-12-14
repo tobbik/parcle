@@ -270,10 +270,17 @@ local to_file = function(self)
 	pairs  = pairs,
 	ipairs = ipairs
 }
+local f = function(self)
+	for k,v in pairs(self) do
+		if not _Base_tmpl[k] then
+			self[k] = nil
+		end
+	end
+end
 local r = function()
 %s
 end
-setmetatable(t, { __tostring = r })
+setmetatable(t, { __tostring = r, __call = f })
 setfenv(r, t)
 return t]], table.concat(compile_chunk(self)) )
 end
@@ -288,6 +295,7 @@ Parclate.to_file = to_file
 -- #public: create a table that represents just the compiled template
 local compile = function(self)
 	local t= {}
+	-- shallow copy of base template
 	for k,v in pairs(_Base_tmpl) do
 		t[k]=v
 	end
@@ -299,6 +307,7 @@ local compile = function(self)
 			end
 		end
 	end
+	-- prepare the compiled chunk (render function)
 	local chunk = loadstring( table.concat(compile_chunk(self), '') )
 	setmetatable(t, { __tostring = chunk, __call = flush })
 	setfenv(chunk, t)
