@@ -171,15 +171,16 @@ local compile_buffer = function(c_buf, buffer, f_args)
 				table.concat(buffer,'') ..
 			']],'.. table.concat(f_args, ',') ..'))\n'
 		)
-		f_args=nil
+		-- f_args={} creates a new reference, table.remove preserves it
+		for _=1,#f_args do table.remove(f_args) end
 	end
-	buffer=nil
+	for _=1,#buffer do table.remove(buffer) end
 end
 
 -- #private: renders just the chunk, that actully flushes the template
 -- @return: table, that needs to be table.concat()
 local compile_chunk = function (r)
-	local c_buf = {}
+	local c_buf  = {}
 	local buffer = {}
 	local f_args = {}
 	local chunk_cnt = 0
@@ -187,8 +188,6 @@ local compile_chunk = function (r)
 	c_tag = function(t)
 		if t.cmd then
 			compile_buffer(c_buf, buffer, f_args)
-			f_args={}
-			buffer={}
 			chunk_cnt=chunk_cnt+1
 			dispatch_command(t.cmd, c_buf)
 		end
@@ -227,8 +226,6 @@ local compile_chunk = function (r)
 		end
 		if t.cmd then
 			compile_buffer(c_buf, buffer, f_args)
-			f_args={}
-			buffer={}
 			chunk_cnt=chunk_cnt+1
 			dispatch_command_end(t.cmd, c_buf)
 		end
