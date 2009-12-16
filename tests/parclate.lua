@@ -86,6 +86,7 @@ local ts2 = [[
 </head>
 <body>
   ${nestedloop}
+  <p>TEST: ${char(65,66,67)}</p>
 </body>
 </html>
 ]]
@@ -93,4 +94,5 @@ local b = Parclate(ts2)()  -- gen tmpl representation from xml string
 
 b.title      = 'An entirely different webtitle'
 b.nestedloop = tostring(a)
+b.char       = string.char     -- string char is not known in templates env
 print(b)

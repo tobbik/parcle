@@ -212,7 +212,7 @@ local compile_chunk = function (r)
 				c_tag(v)
 			elseif 'string' == type(v) then
 				local s = string.gsub(v, '%%','%%%%')
-				s = string.gsub(s, '${([%w%.()]+)}?', function (f)
+				s = string.gsub(s, '${([^}]+)}?', function (f)
 					table.insert( f_args, f )
 					return '%s'
 				end)
@@ -291,7 +291,7 @@ local compile = function(self)
 		end
 	end
 	-- prepare the compiled chunk (render function)
-	local chunk = loadstring( table.concat(compile_chunk(self), '') )
+	local chunk = assert( loadstring( table.concat(compile_chunk(self), '') ) )
 	setmetatable(t, { __tostring = chunk, __call = flush })
 	setfenv(chunk, t)
 	return t
