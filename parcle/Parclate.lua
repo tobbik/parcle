@@ -163,11 +163,11 @@ end
 local compile_buffer = function(c_buf, buffer, f_args)
 	if 0 == #f_args then
 		table.insert(c_buf,
-			'\tinsert(x,[[' .. table.concat(buffer,'') .. ']])\n'
+			' insert(x,[[' .. table.concat(buffer,'') .. ']])\n'
 		)
 	else
 		table.insert(c_buf,
-			'\tinsert(x, format([[' ..
+			' insert(x, format([[' ..
 				table.concat(buffer,'') ..
 			']],'.. table.concat(f_args, ',') ..'))\n'
 		)
@@ -239,38 +239,32 @@ local compile_chunk = function (r)
 	-- add last chunk to c_buf table
 	compile_buffer(c_buf, buffer, f_args)
 	chunk_cnt=chunk_cnt+1
-	table.insert(c_buf, "\treturn concat(x,'')")
+	table.insert(c_buf, " return concat(x,'')")
 	table.insert(c_buf,1,'}\n')
 	-- prefill the array with a safe amount of empty slots to avoid rehashing
-	--   - excessive for loops will throw cause problems
+	--   - excessive 'for' loops will make that less useful
 	local empties = 1+math.pow(2, (math.ceil(math.log(chunk_cnt)/math.log(2))+1))
 	for i=1,empties do
 		local addy = (i==1) and "''" or "'',"
 		table.insert(c_buf,1,addy)
 	end
-	table.insert(c_buf,1,'\tlocal x={')
+	table.insert(c_buf,1,' local x={')
 	return c_buf
 end
 
 -- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
-	return string.format([[local t,t1  = {
-	format = string.format, pairs  = pairs, ipairs = ipairs,
-	concat = table.concat,  insert = table.insert
-}, {format = string.format, pairs  = pairs, ipairs = ipairs,
-	concat = table.concat,  insert = table.insert }
-local f = function(self)
-	for k,v in pairs(self) do
-		if not t1[k] then
-			self[k] = nil
-		end
-	end
-end
-local r = function()
+	return string.format([[local t,t1={
+ format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert},{
+ format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert}
+local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
+local r=function()
 %s
 end
-setmetatable(t, { __tostring = r, __call = f })
-setfenv(r, t)
+setmetatable(t,{__tostring=r,__call=f})
+setfenv(r,t)
 return t]], table.concat(compile_chunk(self)) )
 end
 Parclate.to_file = to_file
