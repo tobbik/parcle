@@ -1,14 +1,7 @@
-CC=clang -g -O0
-LD=llvm-ld -native
-
-parcle: main.o server.o http.o app.o config.o
-	$(LD) main.o server.o http.o app.o config.o -o $@ -lpthread -llua -lm
-	-rm $@.bc
-
-.o:
-	$(CC) -c -o $@.o $@.c
+build:
+	cd src && $(MAKE)
+	cp src/parcle ./parcle
 
 clean:
-	-rm *.o parcle
-
-# vim: ts=4 sw=4 st=4 sta tw=80 list
+	-rm parcle
+	cd src && $(MAKE) $@
