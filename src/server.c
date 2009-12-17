@@ -374,7 +374,7 @@ write_head (struct cn_strct *cn)
 
 		cn->file_desc = open(cn->url, O_RDONLY);
 
-		cn->processed_bytes = snprintf(buf, sizeof(buf),
+		cn->processed_bytes = (size_t) snprintf(buf, sizeof(buf),
 			HTTP_VERSION" 200 OK\r\n"
 			"Server: %s\r\n"
 			"Content-Type: %s\r\n"

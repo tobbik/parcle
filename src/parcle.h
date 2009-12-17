@@ -71,7 +71,7 @@ struct cn_strct {
 	char                 *data_buf_head;    /* points to start, always */
 	char                 *data_buf;         /* points to current spot */
 	const char           *out_buf;          /* points to a Lua buffer */
-	int                   processed_bytes;  /* read or write, how much is done? */
+	size_t                processed_bytes;  /* read or write, how much is done? */
 	/* inc buffer state */
 	int                   line_count;
 	/* head information */
