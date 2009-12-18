@@ -13,15 +13,10 @@
 
 #include "parcle.h"
 
-
-#ifdef HAVE_LUA
 #include "lua.h"
 #include "lualib.h"
 #include "lauxlib.h"
-#endif
 
-
-#ifdef HAVE_LUA
 static int      l_buffer_output        ( lua_State *L );
 static int      l_get_output_buffer    ( lua_State *L );
 
@@ -31,10 +26,6 @@ const struct luaL_reg app_lib [] = {
 	{"prepare",  l_get_output_buffer},
 	{NULL,       NULL}
 };
-#else
-static void c_response                 ( struct cn_strct *cn);
-#endif
-
 
 /*
  * Run the actual application workers, just keep looping through them and see if
@@ -47,13 +38,13 @@ void
 	int              id =       *((int*) tid);
 	int              sent;
 
-#ifdef HAVE_LUA
 	// thread local lua state
 	lua_State *L = lua_open();
 	luaL_openlibs (L);
 	luaL_openlib  (L, "parcle", app_lib, 0);
-	luaL_dofile   (L, "app/_init.lua");
-#endif
+	//luaL_dofile   (L, "app/_init2.lua");
+	if (luaL_loadfile(L, "app/_init.lua") || lua_pcall(L, 0, 0, 0))
+		error(L, "cannot run file: %s", lua_tostring(L, -1));
 
 	while(1) {
 		// monitor
@@ -90,16 +81,10 @@ void
 #endif
 		pthread_mutex_unlock ( &pull_job_mutex );
 
-#ifdef HAVE_LUA
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
 		lua_pushlightuserdata(L, (void*) cn);
 		lua_call(L, 1, 0);
-#else
-		c_response(cn);
-		cn->out_buf         = cn->data_buf_head;
-		cn->processed_bytes = strlen(cn->data_buf_head);
-#endif
 
 		/* signal the select loop that we are done ... */
 		while (REQSTATE_SEND_FILE != cn->req_state) {
@@ -112,9 +97,6 @@ void
 	}
 }
 
-
-
-#ifdef HAVE_LUA
 
 /* TODO: the actual part of the Lua lib -> factor out */
 static int
@@ -135,129 +117,8 @@ l_get_output_buffer (lua_State *L)
 	struct cn_strct *cn  = NULL;
 	cn                   =  (struct cn_strct*) lua_touserdata(L, 1);
 
-	cn->processed_bytes = lua_strlen (L, 2);
+	cn->processed_bytes  = lua_strlen (L, 2);
 	cn->out_buf = lua_tolstring (L, 2, &cn->processed_bytes);
 
 	return 0;
 }
-#else
-/*
- * A native (dummy) method that returns a static response into the connections
- * socket. It's meant to be used as a test method only
- */
-static void
-c_response ( struct cn_strct *cn )
-{
-	char *page = "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n\
-  \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\" >\n\
-<html xmlns=\"http://www.w3.org/1999/xhtml\" xml:lang=\"en\" lang=\"en\" >\n\
-<head>\n\
-  <title>A C-generated dynamic page</title>\n\
-  <meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\" />\n\
-</head>\n\
-<body>\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-  <b>I am a line</b>: Amazing isn't it totally blowing your mind! ?! <br />\n\
-</body>\n\
-</html>\n";
-	cn->processed_bytes = snprintf(
-		cn->data_buf_head, RECV_BUFF_LENGTH,
-		HTTP_VERSION" 200 OK\r\n"
-		"Server: %s\r\n"
-		"Content-Type: text/html\r\n"
-		"Content-Length: %Zd\r\n"
-		"Date: %s\r\n"
-		"Last-Modified: %s\r\n\r\n%s"
-		, _Server_version, strlen(page),
-		_Master_date, _Master_date, page
-	);
-}
-#endif

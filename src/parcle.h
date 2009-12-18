@@ -9,10 +9,6 @@
 #include <pthread.h>        /* mutexes, conditions  */
 #include <sys/socket.h>     /* cn_strct->net_socket */
 
-
-/* Launch the Lua interpreter within each worker thread */
-#define HAVE_LUA
-
 /* A few constants */
 #define BACK_LOG             5    /* How many sockets waiting for accept */
 
