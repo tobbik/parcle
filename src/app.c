@@ -32,22 +32,24 @@ const struct luaL_reg app_lib [] = {
  * something is left to do
  */
 void
-*run_app_thread (void *tid)
+*run_app_thread (void *targs)
 {
+	struct thread_arg *args;
 	struct cn_strct *cn;
-	int              id =       *((int*) tid);
 	int              sent;
+	char             answer_buf[6];
 
-	// thread local lua state
+	args = (struct thread_arg *) targs;
+
+	/* thread local lua state */
 	lua_State *L = lua_open();
 	luaL_openlibs (L);
 	luaL_openlib  (L, "parcle", app_lib, 0);
-	//luaL_dofile   (L, "app/_init2.lua");
 	if (luaL_loadfile(L, "app/_init.lua") || lua_pcall(L, 0, 0, 0))
 		error(L, "cannot run file: %s", lua_tostring(L, -1));
 
 	while(1) {
-		// monitor
+		/* monitor */
 		pthread_mutex_lock( &wake_worker_mutex );
 		while (NULL == _Queue_head) {
 			pthread_cond_wait( &wake_worker_cond, &wake_worker_mutex );
@@ -80,17 +82,20 @@ void
 			);
 #endif
 		pthread_mutex_unlock ( &pull_job_mutex );
+		cn->ipc_socket = &args->r_pipe;
 
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
 		lua_pushlightuserdata(L, (void*) cn);
 		lua_call(L, 1, 0);
 
-		/* signal the select loop that we are done ... */
+		/* signal the select loop that we are done ... 
 		while (REQSTATE_SEND_FILE != cn->req_state) {
 			sent = send (cn->net_socket, "", 0, 0);
 			cn->req_state       = REQSTATE_SEND_FILE;
-		}
+		} */
+		snprintf (answer_buf, 6, "%d", args->t_id);
+		write (args->w_pipe, answer_buf, strlen(answer_buf));
 
 		/* pick up some slack in case some others missed */
 		pthread_cond_signal (&wake_worker_cond);

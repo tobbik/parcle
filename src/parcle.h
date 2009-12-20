@@ -52,6 +52,15 @@ enum http_version {
 	HTTP_11
 };
 
+/* what we need to pass on to the worker thread(s) */
+struct thread_arg {
+	int        r_pipe;   /* let main loop to listen to thread messages */
+	int        w_pipe;   /* let thread send messages to main loop */
+	int        t_id;     /* the thread id */
+	pthread_t  thread;   /* the actual thread */
+};
+
+
 /* contains all metadata regarding one connection */
 struct cn_strct {
 	/* doubly linked list for the _Busy_conns */
@@ -62,6 +71,7 @@ struct cn_strct {
 	/* basic information */
 	enum    req_states    req_state;
 	int                   net_socket;
+	int                  *ipc_socket;
 	int                   file_desc;
 	/* data buffer */
 	char                 *data_buf_head;    /* points to start, always */
@@ -77,9 +87,7 @@ struct cn_strct {
 	enum    http_version  http_prot;        /* not that we would care ...*/
 
 	enum    bool          is_static;        /* serve a file, don't run app */
-#if DEBUG_VERBOSE == 2
-	int                   identifier;       /* DEBUG: keep track of structs and later house cleaning */
-#endif
+	int                   id;               /* identify which came back from thread */
 };
 
 
@@ -115,10 +123,12 @@ extern int                  _Conn_count;       /* all existing cn_structs */
 extern struct cn_strct     *_Queue_head;
 extern struct cn_strct     *_Queue_tail;
 extern int                  _Queue_count;
-extern pthread_mutex_t wake_worker_mutex;
-extern pthread_mutex_t pull_job_mutex;
-extern pthread_cond_t  wake_worker_cond;
-extern pthread_t       _Workers[WORKER_THREADS]; /* used to clean up */
+extern pthread_mutex_t      wake_worker_mutex;
+extern pthread_mutex_t      pull_job_mutex;
+extern pthread_cond_t       wake_worker_cond;
+//extern pthread_t            _Workers[WORKER_THREADS]; /* used to clean up */
+extern struct thread_arg    _Workers[WORKER_THREADS]; /* used to clean up */
+//extern struct thread_arg    _Thread_args[WORKER_THREADS]; /* holds the pipes */
 
 
 /*

@@ -43,7 +43,7 @@ int                  _Conn_count;       /* all existing cn_structs */
 struct cn_strct     *_Queue_head;
 struct cn_strct     *_Queue_tail;
 int                  _Queue_count;
-pthread_t       _Workers[WORKER_THREADS]; /* used to clean up */
+struct thread_arg    _Workers[WORKER_THREADS]; /* used to clean up */
 
 
 static int   create_listener        ( int port );
@@ -92,7 +92,7 @@ clean_on_quit(int sig)
 
 	/* cleanup the threads */
 	for (i = 0; i < WORKER_THREADS; i++) {
-		pthread_cancel(_Workers[i]);
+		pthread_cancel(_Workers[i].thread);
 	}
 
 	exit(0);
@@ -109,9 +109,10 @@ die(int sig)
 int
 main(int argc, char *argv[])
 {
-	struct cn_strct   *tp;
-	int                 i;
-	struct    tm       *tm_struct;
+	struct cn_strct  *tp;
+	int               i;
+	struct tm        *tm_struct;
+	int               pipe_set[2];
 
 	/* initialize the masterdate we update only every second */
 	_Last_loop = time(NULL);
@@ -163,11 +164,19 @@ main(int argc, char *argv[])
 
 	/* create workers for application */
 	for(i = 0; i < WORKER_THREADS; i++) {
-		pthread_create(&_Workers[i], NULL, &run_app_thread, (void *) &i);
+		pipe(pipe_set);
+		_Workers[i].r_pipe = pipe_set[0];
+		_Workers[i].w_pipe = pipe_set[1];
+		_Workers[i].t_id   = i;
+		pthread_create(&_Workers[i].thread,
+			NULL,
+			&run_app_thread,
+			(void *) &_Workers[i]
+		);
 	}
 	sleep(1);
 	for(i = 0; i < WORKER_THREADS; i++) {
-		pthread_detach( _Workers[i] );
+		pthread_detach( _Workers[i].thread );
 	}
 
 #if DEBUG_VERBOSE == 1

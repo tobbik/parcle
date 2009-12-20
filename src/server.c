@@ -47,7 +47,9 @@ server_loop(int argc, char *argv[])
 {
 	fd_set              rfds, wfds;
 	struct cn_strct    *tp, *to;
-	int                 rnum, wnum, readsocks;
+	int                 rnum, wnum, readsocks, i, a_cnt;
+	int                 answers[WORKER_THREADS];
+	char                answer[6];
 
 	while (1) {
 		// clean socket lists
@@ -73,8 +75,8 @@ server_loop(int argc, char *argv[])
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
 			if (REQSTATE_BUFF_HEAD == tp->req_state) {
-				FD_SET(tp->net_socket, &wfds);
-				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
+				FD_SET(*tp->ipc_socket, &rfds);
+				rnum = (*tp->ipc_socket > rnum) ? *tp->ipc_socket : rnum;
 			}
 			if (REQSTATE_BUFF_FILE == tp->req_state) {
 				FD_SET(tp->file_desc, &rfds);
@@ -85,6 +87,11 @@ server_loop(int argc, char *argv[])
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
 			tp = tp->c_next;
+		}
+		/* Adding the ipc pipes */
+		for (i=0; i<WORKER_THREADS; i++) {
+			FD_SET (_Workers[i].r_pipe, &rfds);
+			rnum = (_Workers[i].r_pipe > rnum) ? _Workers[i].r_pipe : rnum;
 		}
 
 		readsocks = select(
@@ -101,12 +108,45 @@ server_loop(int argc, char *argv[])
 			readsocks--;
 		}
 
+		/* Has a thread finished ?
+		for (i=0; i<WORKER_THREADS; i++) {
+			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
+				readsocks--;
+				read(_Workers[i].r_pipe, answer, 6);
+				// answers[i] = atoi(answer);
+				a_cnt = atoi(answer);
+				printf("CN ID: %d\n", a_cnt);
+				tp = _Busy_conns;
+				while (tp != NULL) {
+					to = tp;
+					tp = tp->c_next;
+					if (to->id == atoi(answer) ) {
+						to->req_state = REQSTATE_SEND_FILE;
+						send_file(to);
+					}
+				}
+			}
+		}
+		*/
+
 		// Handle the established sockets
 		tp = _Busy_conns;
 
 		while (readsocks > 0 && tp != NULL) {
 			to = tp;
 			tp = tp->c_next;
+
+			if (REQSTATE_BUFF_HEAD == to->req_state &&
+			  FD_ISSET(*to->ipc_socket, &rfds)) {
+				readsocks--;
+				read(*to->ipc_socket, answer, 6);
+#if DEBUG_VERBOSE == 1
+				printf("WANNA SEND APP BUFFER\n");
+#endif
+				to->req_state = REQSTATE_SEND_FILE;
+				to->ipc_socket = NULL;
+				send_file(to);
+			}
 
 			if (REQSTATE_READ_HEAD == to->req_state &&
 			  FD_ISSET(to->net_socket, &rfds)) {
