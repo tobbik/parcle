@@ -115,9 +115,7 @@ extern const char * const   _Server_version;
 extern int                  _Master_sock;      /* listening master socket */
 extern time_t               _Last_loop;        /* marks the last run of select */
 extern char                 _Master_date[30];  /* the formatted date */
-#if DEBUG_VERBOSE == 2
 extern int                  _Conn_count;       /* all existing cn_structs */
-#endif
 
 /* a FIFO stack for quead up conns waiting for threads */
 extern struct cn_strct     *_Queue_head;

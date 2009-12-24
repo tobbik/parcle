@@ -74,10 +74,10 @@ server_loop(int argc, char *argv[])
 				FD_SET(tp->net_socket, &wfds);
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
-			if (REQSTATE_BUFF_HEAD == tp->req_state) {
-				FD_SET(*tp->ipc_socket, &rfds);
-				rnum = (*tp->ipc_socket > rnum) ? *tp->ipc_socket : rnum;
-			}
+			//if (REQSTATE_BUFF_HEAD == tp->req_state) {
+			//	FD_SET(*tp->ipc_socket, &rfds);
+			//	rnum = (*tp->ipc_socket > rnum) ? *tp->ipc_socket : rnum;
+			//}
 			if (REQSTATE_BUFF_FILE == tp->req_state) {
 				FD_SET(tp->file_desc, &rfds);
 				rnum = (tp->file_desc > rnum) ? tp->file_desc : rnum;
@@ -112,6 +112,7 @@ server_loop(int argc, char *argv[])
 		for (i=0; i<WORKER_THREADS; i++) {
 			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
 				readsocks--;
+				memset(answer,0,6*sizeof(char));
 				read(_Workers[i].r_pipe, answer, 6);
 				// answers[i] = atoi(answer);
 				a_cnt = atoi(answer);
@@ -137,8 +138,10 @@ server_loop(int argc, char *argv[])
 			tp = tp->c_next;
 
 			if (REQSTATE_BUFF_HEAD == to->req_state &&
+			  NULL != to->ipc_socket &&
 			  FD_ISSET(*to->ipc_socket, &rfds)) {
 				readsocks--;
+				memset(answer, 0, 6*sizeof(char));
 				read(*to->ipc_socket, answer, 6);
 #if DEBUG_VERBOSE == 1
 				printf("WANNA SEND APP BUFFER\n");
@@ -200,9 +203,7 @@ add_conn_to_list(int sd, char *ip)
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
 		_Free_count=0;
-#if DEBUG_VERBOSE == 2
-		tp->identifier = _Conn_count++;
-#endif
+		tp->id = _Conn_count++;
 	}
 	else {
 		tp = _Free_conns;

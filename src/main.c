@@ -35,9 +35,7 @@ int                  _Busy_count;
 int                  _Master_sock;      /* listening master socket */
 time_t               _Last_loop;        /* marks the last run of select */
 char                 _Master_date[30];  /* the formatted date */
-#if DEBUG_VERBOSE == 2
 int                  _Conn_count;       /* all existing cn_structs */
-#endif
 
 /* a FIFO stack for quead up conns waiting for threads */
 struct cn_strct     *_Queue_head;
@@ -118,9 +116,7 @@ main(int argc, char *argv[])
 	_Last_loop = time(NULL);
 	tm_struct  = gmtime(&_Last_loop);
 	strftime( _Master_date, 32, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
-#if DEBUG_VERBOSE == 2
 	_Conn_count=0;
-#endif
 #if DEBUG_VERBOSE == 1
 	printf("STARTED AT: %s\n", _Master_date);
 #endif
@@ -145,9 +141,7 @@ main(int argc, char *argv[])
 		_Free_conns->c_next = tp;
 		_Free_conns->c_prev = NULL;
 		_Free_conns->q_prev = NULL;
-#if DEBUG_VERBOSE == 2
-		_Free_conns->identifier = _Conn_count++;
-#endif
+		_Free_conns->id     = _Conn_count++;
 		_Free_count++;
 	}
 
@@ -239,14 +233,14 @@ show_list (struct cn_strct *nd)
 		}
 		tmp1 = tmp->c_next;
 		if (NULL != tmp->c_prev && NULL != tmp->c_next)
-			printf("%d\t%d\t%d\n", tmp->c_prev->identifier,
-				tmp->identifier, tmp->c_next->identifier );
+			printf("%d\t%d\t%d\n", tmp->c_prev->id,
+				tmp->id, tmp->c_next->id );
 		else if (NULL == tmp->c_prev && NULL != tmp->c_next)
-			printf("  \t%d\t%d\n", tmp->identifier, tmp->c_next->identifier );
+			printf("  \t%d\t%d\n", tmp->id, tmp->c_next->id );
 		else if (NULL != tmp->c_prev && NULL == tmp->c_next)
-			printf("%d\t%d\t  \n", tmp->c_prev->identifier, tmp->identifier);
+			printf("%d\t%d\t  \n", tmp->c_prev->id, tmp->id);
 		else
-			printf("  \t%d\t  \n", tmp->identifier);
+			printf("  \t%d\t  \n", tmp->id);
 		tmp=tmp1;
 	}
 }
@@ -266,9 +260,9 @@ show_queue (struct cn_strct *nd, int count)
 		}
 		tmp1 = tmp->q_prev;
 		if (NULL == tmp->q_prev)
-			printf("  \t%d\t  \t%d\n", tmp->identifier, count);
+			printf("  \t%d\t  \t%d\n", tmp->id, count);
 		else
-			printf("%d\t%d\t  \t%d\n", tmp->q_prev->identifier, tmp->identifier, count);
+			printf("%d\t%d\t  \t%d\n", tmp->q_prev->id, tmp->id, count);
 		tmp=tmp1;
 		cnt++;
 	}
@@ -281,7 +275,7 @@ show_cn (struct cn_strct *cn)
 		"DATA_ALL: %s\n"
 		"DATA_NOW: %s\n"
 		"PROCESSED: %d\n",
-		cn->identifier,
+		cn->id,
 		cn->req_state,
 		cn->data_buf_head,
 		cn->data_buf,

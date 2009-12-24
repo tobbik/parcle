@@ -89,12 +89,8 @@ void
 		lua_pushlightuserdata(L, (void*) cn);
 		lua_call(L, 1, 0);
 
-		/* signal the select loop that we are done ... 
-		while (REQSTATE_SEND_FILE != cn->req_state) {
-			sent = send (cn->net_socket, "", 0, 0);
-			cn->req_state       = REQSTATE_SEND_FILE;
-		} */
-		snprintf (answer_buf, 6, "%d", args->t_id);
+		/* signal the select loop that we are done ...*/
+		snprintf (answer_buf, 6, "%d", cn->id);
 		write (args->w_pipe, answer_buf, strlen(answer_buf));
 
 		/* pick up some slack in case some others missed */
