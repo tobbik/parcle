@@ -10,7 +10,8 @@
 #include <stdio.h>              /* sadly, some printf statements */
 #include <signal.h>             /* catch Ctrl+C */
 #include <stdlib.h>             /* exit() */
-#include <string.h>             /* memset(), */ 
+#include <string.h>             /* memset(), */
+#include <fcntl.h>              /* F_GETFL, ... */
 #include <pthread.h>            /* create the pool */
 
 /* network, sockets, accept, IP handling */
@@ -108,7 +109,7 @@ int
 main(int argc, char *argv[])
 {
 	struct cn_strct  *tp;
-	int               i;
+	int               i,f,r;
 	struct tm        *tm_struct;
 	int               pipe_set[2];
 
@@ -162,6 +163,10 @@ main(int argc, char *argv[])
 		_Workers[i].r_pipe = pipe_set[0];
 		_Workers[i].w_pipe = pipe_set[1];
 		_Workers[i].t_id   = i;
+		f = fcntl(pipe_set[0], F_GETFL, 0);
+		r = fcntl(pipe_set[0], F_SETFL, f | O_NONBLOCK);
+		f = fcntl(pipe_set[1], F_GETFL, 0);
+		r = fcntl(pipe_set[1], F_SETFL, f | O_NONBLOCK);
 		pthread_create(&_Workers[i].thread,
 			NULL,
 			&run_app_thread,
