@@ -483,9 +483,10 @@ send_file (struct cn_strct *cn)
 	int rv = send (cn->net_socket, cn->out_buf,
 		cn->processed_bytes, 0);
 
-#if DEBUG_VERBOSE == 1
-	printf("sent: %d   ---- left: %d\n", rv, cn->processed_bytes-rv);
-#endif
+//#if DEBUG_VERBOSE == 1
+	printf("[%d]sent: %d   ---- left: %d\n",
+		cn->id, rv, cn->processed_bytes-rv);
+//#endif
 	if (0 > rv) {
 		remove_conn_from_list(cn);
 	}
@@ -501,6 +502,7 @@ send_file (struct cn_strct *cn)
 	else {
 		cn->out_buf = cn->out_buf + rv;
 		cn->processed_bytes -= rv;
+		//printf("adjusted to %d bytes\n", cn->processed_bytes);
 	}
 }
 
