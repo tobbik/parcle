@@ -82,6 +82,7 @@ void
 			);
 #endif
 		pthread_mutex_unlock ( &pull_job_mutex );
+		cn->ipc_socket = &args->r_pipe;
 
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
@@ -91,7 +92,6 @@ void
 
 		/* signal the select loop that we are done ...*/
 		snprintf (answer_buf, 6, "%d", cn->id);
-		cn->ipc_socket = &args->r_pipe;
 		write (args->w_pipe, answer_buf, strlen(answer_buf));
 
 		/* pick up some slack in case some others missed */
