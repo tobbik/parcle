@@ -48,9 +48,9 @@ server_loop(int argc, char *argv[])
 {
 	fd_set              rfds, wfds;
 	struct cn_strct    *tp, *to;
-	int                 rnum, wnum, readsocks, i, a_cnt;
-	int                 answers[WORKER_THREADS];
-	char                answer[6];
+	int                 rnum, wnum, readsocks, i;
+	char               *cn_id;
+	char                answer[20];
 
 	while (1) {
 		// clean socket lists
@@ -75,10 +75,6 @@ server_loop(int argc, char *argv[])
 				FD_SET(tp->net_socket, &wfds);
 				wnum = (tp->net_socket > wnum) ? tp->net_socket : wnum;
 			}
-			//if (REQSTATE_BUFF_HEAD == tp->req_state) {
-			//	FD_SET(*tp->ipc_socket, &rfds);
-			//	rnum = (*tp->ipc_socket > rnum) ? *tp->ipc_socket : rnum;
-			//}
 			if (REQSTATE_BUFF_FILE == tp->req_state) {
 				FD_SET(tp->file_desc, &rfds);
 				rnum = (tp->file_desc > rnum) ? tp->file_desc : rnum;
@@ -109,16 +105,18 @@ server_loop(int argc, char *argv[])
 			readsocks--;
 		}
 
-		/* Has a thread finished ? */
+		/* Has an app thread finished ? */
 		for (i=0; i<WORKER_THREADS; i++) {
 			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
 				readsocks--;
-				memset(answer, 0, 6*sizeof(char));
-				read(_Workers[i].r_pipe, answer, 6);
-				a_cnt = atoi(answer);
+				memset(answer, 0, 20*sizeof(char));
+				read(_Workers[i].r_pipe, answer, 20);
+				cn_id = strtok(answer, " ");
+				while(cn_id != NULL) {
+					send_file(_All_conns[atoi(cn_id)]);
+					cn_id = strtok(NULL, " ");
+				}
 				readsocks--;
-				printf("CN ID: %s\n", answer);
-				send_file(_All_conns[a_cnt]);
 			}
 		}
 
@@ -183,14 +181,15 @@ add_conn_to_list(int sd, char *ip)
 		if (pow2(_Conn_size) <= _Conn_count) {
 			_Conn_size++;
 			_All_conns = (struct cn_strct **)
-				realloc (_All_conns, pow2(_Conn_size) * sizeof( struct cn_strct *));
+				realloc (_All_conns,
+					pow2(_Conn_size) * sizeof( struct cn_strct *)
+				);
 		}
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
 		_Free_count=0;
 		tp->id = _Conn_count;
 		_All_conns[_Conn_count] = tp;
-		printf("LAST ADDED CN: %d\n", _All_conns[_Conn_count]->id);
 		_Conn_count++;
 	}
 	else {

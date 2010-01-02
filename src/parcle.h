@@ -16,7 +16,7 @@
 
 #define INIT_CONNS           3    /* start with 2^4 preallocated connections*/
 
-#define WORKER_THREADS       9    /* keep that close to #CPU cores */
+#define WORKER_THREADS       2    /* keep that close to #CPU cores */
 #define HTTP_PORT            8000 /* for now a simple static value */
 #define HTTP_VERSION         "HTTP/1.1"  /* we answer in HTTP 1.1 */
 #define DEBUG_VERBOSE        0    /* dirty printfs all over the place */
