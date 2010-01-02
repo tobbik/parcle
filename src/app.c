@@ -45,7 +45,7 @@ void
 	lua_State *L = lua_open();
 	luaL_openlibs (L);
 	luaL_openlib  (L, "parcle", app_lib, 0);
-	if (luaL_loadfile(L, "app/_init2.lua") || lua_pcall(L, 0, 0, 0))
+	if (luaL_loadfile(L, "app/_init.lua") || lua_pcall(L, 0, 0, 0))
 		error(L, "cannot run file: %s", lua_tostring(L, -1));
 
 	while(1) {
