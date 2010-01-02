@@ -28,15 +28,18 @@
 */
 
 #include "parcle.h"
+#include "utils.h"              /* pow2() */
 /* ######################## GLOBAL VARIABLES ############################### */
 struct cn_strct     *_Free_conns;       /* idleing conns, LIFO stack */
 int                  _Free_count;
 struct cn_strct     *_Busy_conns;       /* working conns, doubly linked list */
 int                  _Busy_count;
+struct cn_strct*    *_All_conns;        /* all conns, indexed in array */
 int                  _Master_sock;      /* listening master socket */
 time_t               _Last_loop;        /* marks the last run of select */
 char                 _Master_date[30];  /* the formatted date */
 int                  _Conn_count;       /* all existing cn_structs */
+int                  _Conn_size;        /* 2^x connections */
 
 /* a FIFO stack for quead up conns waiting for threads */
 struct cn_strct     *_Queue_head;
@@ -113,6 +116,8 @@ main(int argc, char *argv[])
 	struct tm        *tm_struct;
 	int               pipe_set[2];
 
+	_Conn_size = INIT_CONNS;
+
 	/* initialize the masterdate we update only every second */
 	_Last_loop = time(NULL);
 	tm_struct  = gmtime(&_Last_loop);
@@ -134,7 +139,10 @@ main(int argc, char *argv[])
 	 * there shall never be a performance issues -> single linked only */
 	_Free_count=0;
 	_Busy_count=0;
-	for (i = 0; i < INITIAL_CONNS; i++) {
+	_All_conns = (struct cn_strct **)
+		malloc (pow2(_Conn_size) * sizeof( struct cn_strct *));
+
+	for (i = 0; i < pow2(_Conn_size); i++) {
 		tp = _Free_conns;
 		_Free_conns = (struct cn_strct *) calloc(1, sizeof(struct cn_strct));
 		_Free_conns->data_buf_head =
@@ -142,8 +150,10 @@ main(int argc, char *argv[])
 		_Free_conns->c_next = tp;
 		_Free_conns->c_prev = NULL;
 		_Free_conns->q_prev = NULL;
-		_Free_conns->id     = _Conn_count++;
+		_Free_conns->id     = _Conn_count;
+		_All_conns[_Conn_count] = _Free_conns;
 		_Free_count++;
+		_Conn_count++;
 	}
 
 	/* create the master listener */

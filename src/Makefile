@@ -1,7 +1,7 @@
 CC=clang -g -O0
 LD=llvm-ld -native
 
-targets=main.o server.o http.o app.o config.o
+targets=utils.o main.o server.o http.o app.o config.o
 parcle: $(targets)
 	$(LD) $(targets) -o $@ -lpthread -llua -lm
 	-rm $@.bc

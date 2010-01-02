@@ -1,7 +1,7 @@
 CC=/usr/lib/clang/ccc-analyzer -g -O0
 LD=llvm-ld -native
 
-parcle: main.o server.o http.o app.o config.o
+parcle: utils.o main.o server.o http.o app.o config.o
 	$(LD) main.o server.o http.o app.o config.o -o $@ -lpthread -llua -lm
 	-rm $@.bc
 

@@ -16,6 +16,7 @@
 #include <arpa/inet.h>        /* struct sockaddr_in */
 
 #include "parcle.h"
+#include "utils.h"            /* pow2() */
 
 /* special cases served from the STATIC_ROOT directory */
 #define FAVICON_URL           "favicon.ico"
@@ -206,10 +207,18 @@ add_conn_to_list(int sd, char *ip)
 
 	/* pop a cn_strct from the free list ... or create one */
 	if (NULL == _Free_conns) {
+		printf("COUNT: %d -- SIZE: %d -- %d\n", _Conn_count, pow2(_Conn_size), _Conn_size);
+		if (pow2(_Conn_size) <= _Conn_count) {
+			_Conn_size++;
+			_All_conns = (struct cn_strct **)
+				realloc (_All_conns, pow2(_Conn_size) * sizeof( struct cn_strct *));
+		}
 		tp = (struct cn_strct *) calloc (1, sizeof(struct cn_strct));
 		tp->data_buf_head = (char *) calloc (RECV_BUFF_LENGTH, sizeof (char));
 		_Free_count=0;
-		tp->id = _Conn_count++;
+		tp->id = _Conn_count;
+		_All_conns[_Conn_count] = tp;
+		_Conn_count++;
 	}
 	else {
 		tp = _Free_conns;

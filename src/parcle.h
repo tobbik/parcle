@@ -14,7 +14,7 @@
 
 #define RECV_BUFF_LENGTH     8196 /* Main buffer assigned to each connection */
 
-#define INITIAL_CONNS        5    /* start out with 5 preallocated connections*/
+#define INIT_CONNS           3    /* start with 2^4 preallocated connections*/
 
 #define WORKER_THREADS       2    /* keep that close to #CPU cores */
 #define HTTP_PORT            8000 /* for now a simple static value */
@@ -111,11 +111,13 @@ extern struct cn_strct     *_Free_conns;       /* idleing conns, LIFO stack */
 extern int                  _Free_count;
 extern struct cn_strct     *_Busy_conns;       /* working conns, doubly linked list */
 extern int                  _Busy_count;
+extern struct cn_strct*    *_All_conns;        /* array with all conns */
 extern const char * const   _Server_version;
 extern int                  _Master_sock;      /* listening master socket */
 extern time_t               _Last_loop;        /* marks the last run of select */
 extern char                 _Master_date[30];  /* the formatted date */
 extern int                  _Conn_count;       /* all existing cn_structs */
+extern int                  _Conn_size;        /* 2^x connections */
 
 /* a FIFO stack for quead up conns waiting for threads */
 extern struct cn_strct     *_Queue_head;
