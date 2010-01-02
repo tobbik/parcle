@@ -4,7 +4,7 @@
 
 package.path = '../?.lua;'..package.path
 
-local Parclate = require('parcle.Parclate')
+local Parclate = require('lib.Parclate')
 
 local template = [[
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
@@ -64,8 +64,8 @@ print(x)
 x()
 
 
--- nested templates 
-local ts1 ='<b l:for="k in numbers()">I am the <i>${k}</i> line</br /></b>\n'
+-- nested templates with strip
+local ts1 ='<span l:for="k in numbers()" l:strip="">I am the <i>${k}</i> <b>line</b></br /></span>\n'
 local a = Parclate(ts1)()  -- gen tmpl representation from xml string
 a.numbers   = function ()
 	local i=0
@@ -75,6 +75,7 @@ a.numbers   = function ()
 		if t[i] then return t[i] end
 	end
 end
+
 
 local ts2 = [[
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
@@ -96,3 +97,4 @@ b.title      = 'An entirely different webtitle'
 b.nestedloop = tostring(a)
 b.char       = string.char     -- string char is not known in templates env
 print(b)
+
