@@ -16,7 +16,7 @@
 #include <fcntl.h>
 #include <time.h>
 
-#define HAVE_LUA
+// #define HAVE_LUA
 
 #ifdef HAVE_LUA
 #include "lua.h"
@@ -96,16 +96,17 @@ static void  show_cn                ( struct cn_strct *cn);
 
 /* Forward declaration of app bound methods */
 static void *run_app_thread         ( void *tid );
-static void  c_response             ( struct cn_strct *cn);
 
 #ifdef HAVE_LUA
 static int   l_buffer_output        ( lua_State *L );
 
 /* set up the Lua bindings for C-functions */
 static const struct luaL_reg app_lib [] = {
-	{"commit",   l_buffer_output},
+	{"prepare",  l_buffer_output},
 	{NULL,       NULL}
 };
+#else
+static void  c_response             ( struct cn_strct *cn);
 #endif
 
 /* ######################## GLOBAL VARIABLES ############################### */
