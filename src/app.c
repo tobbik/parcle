@@ -87,8 +87,7 @@ void
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
 		lua_pushlightuserdata(L, (void*) cn);
-		lua_pushnumber(L, cn->id);
-		lua_call(L, 2, 0);
+		lua_call(L, 1, 0);
 
 		/* signal the select loop that we are done ...*/
 		snprintf (answer_buf, 20, "%d ", cn->id);
