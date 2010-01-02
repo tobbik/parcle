@@ -109,27 +109,18 @@ server_loop(int argc, char *argv[])
 			readsocks--;
 		}
 
-		/* Has a thread finished ?
+		/* Has a thread finished ? */
 		for (i=0; i<WORKER_THREADS; i++) {
 			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
 				readsocks--;
-				memset(answer,0,6*sizeof(char));
+				memset(answer, 0, 6*sizeof(char));
 				read(_Workers[i].r_pipe, answer, 6);
-				// answers[i] = atoi(answer);
 				a_cnt = atoi(answer);
-				printf("CN ID: %d\n", a_cnt);
-				tp = _Busy_conns;
-				while (tp != NULL) {
-					to = tp;
-					tp = tp->c_next;
-					if (to->id == atoi(answer) ) {
-						to->req_state = REQSTATE_SEND_FILE;
-						send_file(to);
-					}
-				}
+				readsocks--;
+				printf("CN ID: %s\n", answer);
+				send_file(_All_conns[a_cnt]);
 			}
 		}
-		*/
 
 		// Handle the established sockets
 		tp = _Busy_conns;
@@ -137,26 +128,6 @@ server_loop(int argc, char *argv[])
 		while (readsocks > 0 && tp != NULL) {
 			to = tp;
 			tp = tp->c_next;
-
-			if (REQSTATE_BUFF_HEAD == to->req_state &&
-			  NULL != to->ipc_socket &&
-			  FD_ISSET(*to->ipc_socket, &rfds)) {
-				readsocks--;
-				memset(answer, 0, 6*sizeof(char));
-				read(*to->ipc_socket, answer, 6);
-				//printf("cn->id: %s -- to->id%d\n",answer, to->id);
-#if DEBUG_VERBOSE == 1
-				printf("WANNA SEND APP BUFFER\n");
-#endif
-				if (atoi(answer) == to->id) {
-					to->req_state = REQSTATE_SEND_FILE;
-					to->ipc_socket = NULL;
-					send_file(to);
-				}
-				else {
-					printf(" ---> NO MISSFIRE");
-				}
-			}
 
 			if (REQSTATE_READ_HEAD == to->req_state &&
 			  FD_ISSET(to->net_socket, &rfds)) {
@@ -207,7 +178,8 @@ add_conn_to_list(int sd, char *ip)
 
 	/* pop a cn_strct from the free list ... or create one */
 	if (NULL == _Free_conns) {
-		printf("COUNT: %d -- SIZE: %d -- %d\n", _Conn_count, pow2(_Conn_size), _Conn_size);
+		printf("COUNT: %d -- SIZE: %d -- %d\n",
+			_Conn_count, pow2(_Conn_size), _Conn_size);
 		if (pow2(_Conn_size) <= _Conn_count) {
 			_Conn_size++;
 			_All_conns = (struct cn_strct **)
@@ -218,6 +190,7 @@ add_conn_to_list(int sd, char *ip)
 		_Free_count=0;
 		tp->id = _Conn_count;
 		_All_conns[_Conn_count] = tp;
+		printf("LAST ADDED CN: %d\n", _All_conns[_Conn_count]->id);
 		_Conn_count++;
 	}
 	else {

@@ -91,7 +91,7 @@ void
 		lua_call(L, 2, 0);
 
 		/* signal the select loop that we are done ...*/
-		snprintf (answer_buf, 6, "%d", cn->id);
+		snprintf (answer_buf, 6, "%d ", cn->id);
 		write (args->w_pipe, answer_buf, strlen(answer_buf));
 
 		/* pick up some slack in case some others missed */
