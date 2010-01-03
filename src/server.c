@@ -106,6 +106,9 @@ server_loop(int argc, char *argv[])
 		}
 
 		/* Has an app thread finished ? */
+		//TODO: Consider set just the REQ_STATE but do not send_file
+		//just doing it after _Busy_conns loop would add the files to the wfds,
+		// they are considered ready and trigger the select loop -> desireable
 		for (i=0; i<WORKER_THREADS; i++) {
 			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
 				readsocks--;
@@ -257,27 +260,39 @@ remove_conn_from_list( struct cn_strct *cn )
 		return;
 
 	if (NULL == tp->c_prev) {          /* tail of _Busy_conns */
-		//printf("REMOVE BUSY TAIL at %d\n", _Busy_count);
 		if (NULL == tp->c_next) {      /* only one in the list */
-			//printf("BUSY TAIL EMPTY\n");
+			//printf("BUSY TAIL EMPTY at last: %d %s\n",
+			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
 			_Busy_conns = NULL;
 		}
 		else {
-			tp->c_next->c_prev  = NULL;
-			_Busy_conns         = tp->c_next;
+			//printf("BUSY TAIL EMPTY with more: %d %s\n",
+			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
+			if (tp != _Busy_conns) {
+				print_cn(tp);
+				if (cn->net_socket != -1) {
+					close(cn->net_socket);
+				}
+				return;
+			}
+			else {
+				tp->c_next->c_prev  = NULL;
+				_Busy_conns         = tp->c_next;
+			}
 		}
 		_Busy_count--;
 	}
 	else if (NULL == tp->c_next) {    /* head of _Busy_conns */
-		//printf("REMOVE FROM BUSY HEAD at %d\n", _Busy_count);
+		//printf("REMOVE FROM BUSY HEAD at %d\n", tp->id);
 		tp->c_prev->c_next  = NULL;
 		tp->c_prev          = NULL;
 		_Busy_count--;
 	}
 	else {
-		//printf("REMOVE FROM INNER BUSY at %d\n", _Busy_count);
+		//printf("REMOVE FROM INNER BUSY at %d\n", tp->id);
 		tp->c_prev->c_next = tp->c_next;
 		tp->c_next->c_prev = tp->c_prev;
+		_Busy_count--;
 	}
 
 	/* Attach to the end of the _Free_conns, only single link it with c_next */
