@@ -11,7 +11,7 @@
 #include <stdio.h>            /* sadly, some printf statements */
 #include <sys/stat.h>         /* stat() */
 #include <fcntl.h>            /* F_GETFL, ... */
-#include <string.h>           /* memset() */ 
+#include <string.h>           /* memset() */
 #include <stdlib.h>           /* calloc() */
 #include <arpa/inet.h>        /* struct sockaddr_in */
 
@@ -176,8 +176,8 @@ add_conn_to_list(int sd, char *ip)
 
 	/* pop a cn_strct from the free list ... or create one */
 	if (NULL == _Free_conns) {
-		printf("COUNT: %d -- SIZE: %d -- %d\n",
-			_Conn_count, pow2(_Conn_size), _Conn_size);
+		//printf("COUNT: %d -- SIZE: %d -- %d\n",
+		//	_Conn_count, pow2(_Conn_size), _Conn_size);
 		if (pow2(_Conn_size) <= _Conn_count) {
 			_Conn_size++;
 			_All_conns = (struct cn_strct **)
@@ -295,7 +295,7 @@ remove_conn_from_list( struct cn_strct *cn )
  * reset the buffer pointer to the end of the read material and append at
  * next read
  */
-void
+static void
 read_request( struct cn_strct *cn )
 {
 	char *next;
@@ -358,7 +358,7 @@ read_request( struct cn_strct *cn )
 
 /*
  */
-void
+static void
 write_head (struct cn_strct *cn)
 {
 	char       buf[RECV_BUFF_LENGTH];
@@ -442,7 +442,7 @@ write_head (struct cn_strct *cn)
 }
 
 
-void
+static void
 buff_file (struct cn_strct *cn)
 {
 	int rv = read(cn->file_desc, cn->data_buf_head, RECV_BUFF_LENGTH);
@@ -464,7 +464,7 @@ buff_file (struct cn_strct *cn)
 	cn->req_state = REQSTATE_SEND_FILE;
 }
 
-void
+static void
 send_file (struct cn_strct *cn)
 {
 	int rv = send (cn->net_socket, cn->out_buf,

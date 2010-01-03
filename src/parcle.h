@@ -71,7 +71,6 @@ struct cn_strct {
 	/* basic information */
 	enum    req_states    req_state;
 	int                   net_socket;
-	int                  *ipc_socket;
 	int                   file_desc;
 	/* data buffer */
 	char                 *data_buf_head;    /* points to start, always */

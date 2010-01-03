@@ -82,7 +82,6 @@ void
 			);
 #endif
 		pthread_mutex_unlock ( &pull_job_mutex );
-		cn->ipc_socket = &args->r_pipe;
 
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
