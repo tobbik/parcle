@@ -50,7 +50,7 @@ server_loop(int argc, char *argv[])
 	struct cn_strct    *tp, *to;
 	int                 rnum, wnum, readsocks, i;
 	char               *cn_id;
-	char                answer[20];
+	char                answer[ANSWER_LENGTH];
 
 	while (1) {
 		// clean socket lists
@@ -109,14 +109,16 @@ server_loop(int argc, char *argv[])
 		for (i=0; i<WORKER_THREADS; i++) {
 			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
 				readsocks--;
-				memset(answer, 0, 20*sizeof(char));
-				read(_Workers[i].r_pipe, answer, 20);
+				memset(answer, 0, ANSWER_LENGTH * sizeof(char));
+				read(_Workers[i].r_pipe, answer, ANSWER_LENGTH);
+				//printf("ANSWER: %s --- ", answer);
 				cn_id = strtok(answer, " ");
 				while(cn_id != NULL) {
 					send_file(_All_conns[atoi(cn_id)]);
 					cn_id = strtok(NULL, " ");
 				}
 				readsocks--;
+				//printf("\n");
 			}
 		}
 

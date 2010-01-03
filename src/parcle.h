@@ -21,6 +21,7 @@
 #define HTTP_VERSION         "HTTP/1.1"  /* we answer in HTTP 1.1 */
 #define DEBUG_VERBOSE        0    /* dirty printfs all over the place */
 #define WEB_ROOT             "./" /* we serve out of current directory */
+#define ANSWER_LENGTH        256  /* length of ipc buffer */
 
 #define STATIC_ROOT          "webroot" /* if your URL starts with that, it's static */
 #define STATIC_ROOT_LENGTH   7         /* used for string matches */
