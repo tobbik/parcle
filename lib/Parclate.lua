@@ -258,9 +258,9 @@ end
 local to_file = function(self)
 	return string.format([[local t,t1={
  format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert},{
+ concat=table.concat,insert=table.insert,tostring=tostring},{
  format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert}
+ concat=table.concat,insert=table.insert,tostring=tostring}
 local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
 local r=function()
 %s
@@ -281,9 +281,9 @@ Parclate.to_file = to_file
 local compile = function(self)
 	local t1,t ={
 		format = string.format, pairs = pairs, ipairs = ipairs,
-		concat = table.concat,  insert = table.insert
+		concat = table.concat,  insert = table.insert, tostring = tostring
 	},{ format = string.format, pairs = pairs, ipairs = ipairs,
-		concat = table.concat,  insert = table.insert }
+		concat = table.concat,  insert = table.insert, tostring = tostring }
 	-- call() the template to delete all assigned values (for reuse)
 	local flush = function(self)
 		for k,v in pairs(self) do
