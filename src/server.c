@@ -117,7 +117,7 @@ server_loop(int argc, char *argv[])
 				//printf("ANSWER: %s --- ", answer);
 				cn_id = strtok(answer, " ");
 				while(cn_id != NULL) {
-					send_file(_All_conns[atoi(cn_id)]);
+					_All_conns[atoi(cn_id)]->req_state = REQSTATE_SEND_FILE;
 					cn_id = strtok(NULL, " ");
 				}
 				readsocks--;
