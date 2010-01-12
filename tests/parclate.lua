@@ -91,7 +91,10 @@ local ts2 = [[
 </body>
 </html>
 ]]
-local b = Parclate(ts2)()  -- gen tmpl representation from xml string
+local bt = Parclate(ts2)    -- gen tmpl representation from xml string
+local b  = Parclate(ts2)()  -- gen tmpl representation from xml string
+print('COMPILEDD')
+print(bt.debug())
 
 b.title      = 'An entirely different webtitle'
 b.nestedloop = a
