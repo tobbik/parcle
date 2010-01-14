@@ -309,7 +309,6 @@ print_r = function( self, indent, done )
 	local done   = done or {}
 	local indent = indent or ''
 	local nextIndent -- Storage for next indentation value
-	if type(self) ~= 'table' then return '' end
 	for key, value in pairs (self) do
 		if type (value) == 'table' and not done [value] then
 			nextIndent = nextIndent or
