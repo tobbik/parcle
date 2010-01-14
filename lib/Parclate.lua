@@ -8,6 +8,10 @@ local tostring     = tostring
 local type         = type
 local unpack       = unpack
 
+-- determine version
+-- We use that to determine if "setfenv" or "in env do"
+local v52 = (_VERSION=='Lua 5.2') and true or false
+
 -- implementation
 local Parclate = {}
 
@@ -256,7 +260,22 @@ end
 
 -- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
-	return string.format([[local t,t1={
+	if v52 then
+		return string.format([[local t,t1={
+ format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert,tostring=tostring},{
+ format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert,tostring=tostring}
+local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
+local r=function()
+ in t do
+%s
+ end
+end
+setmetatable(t,{__tostring=r,__call=f})
+return t]], table.concat(compile_chunk(self)) )
+	else
+		return string.format([[local t,t1={
  format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring},{
  format=string.format,pairs=pairs,ipairs=ipairs,
@@ -266,8 +285,9 @@ local r=function()
 %s
 end
 setmetatable(t,{__tostring=r,__call=f})
-setfenv(r,t)
+setfenv(chunk, t)
 return t]], table.concat(compile_chunk(self)) )
+	end
 end
 Parclate.to_file = to_file
 
@@ -279,7 +299,7 @@ Parclate.to_file = to_file
                     |_|              --]]
 -- #public: create a table that represents just the compiled template
 local compile = function(self)
-	local t1,t ={
+	local t1,t = {
 		format = string.format, pairs = pairs, ipairs = ipairs,
 		concat = table.concat,  insert = table.insert, tostring = tostring
 	},{ format = string.format, pairs = pairs, ipairs = ipairs,
@@ -293,9 +313,12 @@ local compile = function(self)
 		end
 	end
 	-- prepare the compiled chunk (render function)
-	local chunk = assert( loadstring( table.concat(compile_chunk(self), '') ) )
+	local chunk = (v52) and
+		assert( loadin(t, table.concat(compile_chunk(self)) ))
+		or
+		assert( loadstring(table.concat(compile_chunk(self)) ))
 	setmetatable(t, { __tostring = chunk, __call = flush })
-	setfenv(chunk, t)
+	if not v52 then setfenv(chunk, t) end
 	return t
 end
 Parclate.compile = compile
