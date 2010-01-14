@@ -48,7 +48,7 @@ server_loop(int argc, char *argv[])
 {
 	fd_set              rfds, wfds;
 	struct cn_strct    *tp, *to;
-	int                 rnum, wnum, readsocks, i;
+	int                 rnum, wnum, readsocks, i, rp;
 	char               *cn_id;
 	char                answer[ANSWER_LENGTH];
 
@@ -106,14 +106,11 @@ server_loop(int argc, char *argv[])
 		}
 
 		/* Has an app thread finished ? */
-		//TODO: Consider set just the REQ_STATE but do not send_file
-		//just doing it after _Busy_conns loop would add the files to the wfds,
-		// they are considered ready and trigger the select loop -> desireable
 		for (i=0; i<WORKER_THREADS; i++) {
 			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
 				readsocks--;
-				memset(answer, 0, ANSWER_LENGTH * sizeof(char));
-				read(_Workers[i].r_pipe, answer, ANSWER_LENGTH);
+				rp = read(_Workers[i].r_pipe, answer, ANSWER_LENGTH);
+				answer[rp] = '\0';
 				//printf("ANSWER: %s --- ", answer);
 				cn_id = strtok(answer, " ");
 				while(cn_id != NULL) {
