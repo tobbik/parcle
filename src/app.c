@@ -37,7 +37,7 @@ void
 	struct thread_arg *args;
 	struct cn_strct *cn;
 	int              sent;
-	char             answer_buf[20];
+	char             answer_buf[ANSWER_LENGTH];
 
 	args = (struct thread_arg *) targs;
 
@@ -82,16 +82,14 @@ void
 			);
 #endif
 		pthread_mutex_unlock ( &pull_job_mutex );
-		cn->ipc_socket = &args->r_pipe;
 
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
 		lua_pushlightuserdata(L, (void*) cn);
-		lua_pushnumber(L, cn->id);
-		lua_call(L, 2, 0);
+		lua_call(L, 1, 0);
 
 		/* signal the select loop that we are done ...*/
-		snprintf (answer_buf, 20, "%d ", cn->id);
+		snprintf (answer_buf, ANSWER_LENGTH, "%d ", cn->id);
 		write (args->w_pipe, answer_buf, strlen(answer_buf));
 
 		/* pick up some slack in case some others missed */

@@ -19,8 +19,9 @@
 #define WORKER_THREADS       2    /* keep that close to #CPU cores */
 #define HTTP_PORT            8000 /* for now a simple static value */
 #define HTTP_VERSION         "HTTP/1.1"  /* we answer in HTTP 1.1 */
-#define DEBUG_VERBOSE        0    /* dirty printfs all over the place */
+#define DEBUG_VERBOSE        2    /* dirty printfs all over the place */
 #define WEB_ROOT             "./" /* we serve out of current directory */
+#define ANSWER_LENGTH        256  /* length of ipc buffer */
 
 #define STATIC_ROOT          "webroot" /* if your URL starts with that, it's static */
 #define STATIC_ROOT_LENGTH   7         /* used for string matches */
@@ -71,7 +72,6 @@ struct cn_strct {
 	/* basic information */
 	enum    req_states    req_state;
 	int                   net_socket;
-	int                  *ipc_socket;
 	int                   file_desc;
 	/* data buffer */
 	char                 *data_buf_head;    /* points to start, always */

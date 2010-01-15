@@ -49,9 +49,6 @@ struct thread_arg    _Workers[WORKER_THREADS]; /* used to clean up */
 
 
 static int   create_listener        ( int port );
-static void  show_cn                ( struct cn_strct *cn );
-static void  show_list              ( struct cn_strct *cn );
-static void  show_queue             ( struct cn_strct *cn, int count );
 
 
 /* clean up after Ctrl+C or shutdown */
@@ -62,13 +59,13 @@ clean_on_quit(int sig)
 	int i;
 #if DEBUG_VERBOSE == 2
 	printf("\n\n\n\n\nPRINTING QUEUE: \n");
-	show_queue(_Queue_head, _Queue_count);
+	print_queue(_Queue_head, _Queue_count);
 	printf("PRINTING QUEUE_LIST: \n");
-	show_list(_Queue_tail);
+	print_list(_Queue_tail);
 	printf("PRINTING FREEs: \n");
-	show_list(_Free_conns);
+	print_list(_Free_conns);
 	printf("PRINTING BUSYs: \n");
-	show_list(_Busy_conns);
+	print_list(_Busy_conns);
 #endif
 
 	while (NULL != _Free_conns) {
@@ -81,7 +78,7 @@ clean_on_quit(int sig)
 	while (NULL != _Busy_conns) {
 		tp = _Busy_conns->c_next;
 #if DEBUG_VERBOSE == 2
-		show_cn(tp);
+		print_cn(tp);
 #endif
 		free(_Busy_conns->data_buf_head);
 		close(_Busy_conns->net_socket);
@@ -233,8 +230,8 @@ create_listener(int port)
  * a simplistic way to print out linked lists, a very crude visualization but it
  * helps debugging
  */
-static void
-show_list (struct cn_strct *nd)
+void
+print_list (struct cn_strct *nd)
 {
 	struct cn_strct *tmp, *tmp1;
 	int              cnt = 0;
@@ -260,8 +257,8 @@ show_list (struct cn_strct *nd)
 	}
 }
 
-static void
-show_queue (struct cn_strct *nd, int count)
+void
+print_queue (struct cn_strct *nd, int count)
 {
 	struct cn_strct *tmp, *tmp1;
 	int              cnt = 0;
@@ -282,18 +279,18 @@ show_queue (struct cn_strct *nd, int count)
 		cnt++;
 	}
 }
-static void
-show_cn (struct cn_strct *cn)
+void
+print_cn (struct cn_strct *cn)
 {
-	printf("\n\nIDENTIFIER:  %d\n"
-		"REQSTATE:  %d\n"
-		"DATA_ALL: %s\n"
-		"DATA_NOW: %s\n"
+	printf("\n\nIDENTIFIER:  %d\t"
+		"REQSTATE:  %d\t"
+		//"DATA_ALL: %s\n"
+		//"DATA_NOW: %s\n"
 		"PROCESSED: %d\n",
 		cn->id,
 		cn->req_state,
-		cn->data_buf_head,
-		cn->data_buf,
+		//cn->data_buf_head,
+		//cn->data_buf,
 		cn->processed_bytes);
 }
 #endif

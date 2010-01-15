@@ -11,7 +11,7 @@
 #include <stdio.h>            /* sadly, some printf statements */
 #include <sys/stat.h>         /* stat() */
 #include <fcntl.h>            /* F_GETFL, ... */
-#include <string.h>           /* memset() */ 
+#include <string.h>           /* memset() */
 #include <stdlib.h>           /* calloc() */
 #include <arpa/inet.h>        /* struct sockaddr_in */
 
@@ -48,9 +48,9 @@ server_loop(int argc, char *argv[])
 {
 	fd_set              rfds, wfds;
 	struct cn_strct    *tp, *to;
-	int                 rnum, wnum, readsocks, i;
+	int                 rnum, wnum, readsocks, i, rp;
 	char               *cn_id;
-	char                answer[20];
+	char                answer[ANSWER_LENGTH];
 
 	while (1) {
 		// clean socket lists
@@ -109,14 +109,16 @@ server_loop(int argc, char *argv[])
 		for (i=0; i<WORKER_THREADS; i++) {
 			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
 				readsocks--;
-				memset(answer, 0, 20*sizeof(char));
-				read(_Workers[i].r_pipe, answer, 20);
+				rp = read(_Workers[i].r_pipe, answer, ANSWER_LENGTH);
+				answer[rp] = '\0';
+				//printf("ANSWER: %s --- ", answer);
 				cn_id = strtok(answer, " ");
 				while(cn_id != NULL) {
-					send_file(_All_conns[atoi(cn_id)]);
+					_All_conns[atoi(cn_id)]->req_state = REQSTATE_SEND_FILE;
 					cn_id = strtok(NULL, " ");
 				}
 				readsocks--;
+				//printf("\n");
 			}
 		}
 
@@ -176,8 +178,8 @@ add_conn_to_list(int sd, char *ip)
 
 	/* pop a cn_strct from the free list ... or create one */
 	if (NULL == _Free_conns) {
-		printf("COUNT: %d -- SIZE: %d -- %d\n",
-			_Conn_count, pow2(_Conn_size), _Conn_size);
+		//printf("COUNT: %d -- SIZE: %d -- %d\n",
+		//	_Conn_count, pow2(_Conn_size), _Conn_size);
 		if (pow2(_Conn_size) <= _Conn_count) {
 			_Conn_size++;
 			_All_conns = (struct cn_strct **)
@@ -255,27 +257,39 @@ remove_conn_from_list( struct cn_strct *cn )
 		return;
 
 	if (NULL == tp->c_prev) {          /* tail of _Busy_conns */
-		//printf("REMOVE BUSY TAIL at %d\n", _Busy_count);
 		if (NULL == tp->c_next) {      /* only one in the list */
-			//printf("BUSY TAIL EMPTY\n");
+			//printf("BUSY TAIL EMPTY at last: %d %s\n",
+			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
 			_Busy_conns = NULL;
 		}
 		else {
-			tp->c_next->c_prev  = NULL;
-			_Busy_conns         = tp->c_next;
+			//printf("BUSY TAIL EMPTY with more: %d %s\n",
+			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
+			if (tp != _Busy_conns) {
+				print_cn(tp);
+				if (cn->net_socket != -1) {
+					close(cn->net_socket);
+				}
+				return;
+			}
+			else {
+				tp->c_next->c_prev  = NULL;
+				_Busy_conns         = tp->c_next;
+			}
 		}
 		_Busy_count--;
 	}
 	else if (NULL == tp->c_next) {    /* head of _Busy_conns */
-		//printf("REMOVE FROM BUSY HEAD at %d\n", _Busy_count);
+		//printf("REMOVE FROM BUSY HEAD at %d\n", tp->id);
 		tp->c_prev->c_next  = NULL;
 		tp->c_prev          = NULL;
 		_Busy_count--;
 	}
 	else {
-		//printf("REMOVE FROM INNER BUSY at %d\n", _Busy_count);
+		//printf("REMOVE FROM INNER BUSY at %d\n", tp->id);
 		tp->c_prev->c_next = tp->c_next;
 		tp->c_next->c_prev = tp->c_prev;
+		_Busy_count--;
 	}
 
 	/* Attach to the end of the _Free_conns, only single link it with c_next */
@@ -295,7 +309,7 @@ remove_conn_from_list( struct cn_strct *cn )
  * reset the buffer pointer to the end of the read material and append at
  * next read
  */
-void
+static void
 read_request( struct cn_strct *cn )
 {
 	char *next;
@@ -358,7 +372,7 @@ read_request( struct cn_strct *cn )
 
 /*
  */
-void
+static void
 write_head (struct cn_strct *cn)
 {
 	char       buf[RECV_BUFF_LENGTH];
@@ -442,7 +456,7 @@ write_head (struct cn_strct *cn)
 }
 
 
-void
+static void
 buff_file (struct cn_strct *cn)
 {
 	int rv = read(cn->file_desc, cn->data_buf_head, RECV_BUFF_LENGTH);
@@ -464,7 +478,7 @@ buff_file (struct cn_strct *cn)
 	cn->req_state = REQSTATE_SEND_FILE;
 }
 
-void
+static void
 send_file (struct cn_strct *cn)
 {
 	int rv = send (cn->net_socket, cn->out_buf,
