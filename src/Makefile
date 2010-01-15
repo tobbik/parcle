@@ -1,6 +1,6 @@
 #CC=clang                                   # modern compiler
-#CC=gcc                                    # use gcc - fallback
-CC=ccc-analyzer                            # invoke clang static analyzer
+CC=gcc                                    # use gcc - fallback
+#CC=ccc-analyzer                            # invoke clang static analyzer
 LD=llvm-ld -native
 #LD=gcc                                    # fallback
 LDFLAGS=-lpthread -llua -lm

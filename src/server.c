@@ -14,6 +14,7 @@
 #include <string.h>           /* memset() */
 #include <stdlib.h>           /* calloc() */
 #include <arpa/inet.h>        /* struct sockaddr_in */
+#include <unistd.h>           /* read, close */
 
 #include "parcle.h"
 #include "utils.h"            /* pow2() */
@@ -44,7 +45,7 @@ static const char *get_mime_type    ( const char *name );
 
 
 void
-server_loop(int argc, char *argv[])
+server_loop()
 {
 	fd_set              rfds, wfds;
 	struct cn_strct    *tp, *to;

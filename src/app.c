@@ -10,6 +10,7 @@
 #include <stdio.h>              /* sadly, some printf statements */
 #include <pthread.h>            /* mutexes, conditions */
 #include <string.h>             /* strlen() */
+#include <unistd.h>             /* write */
 
 #include "parcle.h"
 
@@ -36,7 +37,6 @@ void
 {
 	struct thread_arg *args;
 	struct cn_strct *cn;
-	int              sent;
 	char             answer_buf[ANSWER_LENGTH];
 
 	args = (struct thread_arg *) targs;
@@ -46,7 +46,8 @@ void
 	luaL_openlibs (L);
 	luaL_openlib  (L, "parcle", app_lib, 0);
 	if (luaL_loadfile(L, "app/_init.lua") || lua_pcall(L, 0, 0, 0))
-		error(L, "cannot run file: %s", lua_tostring(L, -1));
+		//error(L, "cannot run file: %s", lua_tostring(L, -1));
+		;
 
 	while(1) {
 		/* monitor */

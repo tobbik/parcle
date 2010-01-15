@@ -20,9 +20,10 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+#include <unistd.h>             /* chdir, pipe, sleep */
+
 /*
 #include <sys/types.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
 */
@@ -286,12 +287,12 @@ print_cn (struct cn_strct *cn)
 		"REQSTATE:  %d\t"
 		//"DATA_ALL: %s\n"
 		//"DATA_NOW: %s\n"
-		"PROCESSED: %d\n",
+		"PROCESSED: %ld\n",
 		cn->id,
 		cn->req_state,
 		//cn->data_buf_head,
 		//cn->data_buf,
-		cn->processed_bytes);
+		(long) cn->processed_bytes);
 }
 #endif
 

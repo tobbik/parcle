@@ -106,6 +106,9 @@ const char *getmimetype      ( const char *name );
 /* application bound stuff */
 void *run_app_thread         ( void *tid );
 
+/* The main loop in server called from main */
+void server_loop();
+
 /* ######################## GLOBAL VARIABLES ############################### */
 extern struct cn_strct     *_Free_conns;       /* idleing conns, LIFO stack */
 extern int                  _Free_count;
