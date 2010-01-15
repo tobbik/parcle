@@ -1,7 +1,7 @@
-build:
-	cd src && $(MAKE)
+all:
+	cd src; $(MAKE)
 	cp src/parcle ./parcle
 
 clean:
 	-rm parcle
-	cd src && $(MAKE) $@
+	cd src; $(MAKE) $@

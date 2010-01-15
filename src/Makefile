@@ -1,15 +1,24 @@
-CC=clang -g -O0
+CC=clang                                   # modern compiler
+#CC=gcc                                    # use gcc - fallback
+#CC=/usr/lib/clang/scan-build/ccc-analyzer # invoke clang static analyzer
 LD=llvm-ld -native
+#LD=gcc                                    # fallback
+LDFLAGS=-lpthread -llua -lm
+CFLAGS=-c -Wall -g -O0
 
-targets=utils.o main.o server.o http.o app.o config.o
-parcle: $(targets)
-	$(LD) $(targets) -o $@ -lpthread -llua -lm
-	-rm $@.bc
+SOURCES=main.c server.c http.c app.c config.c
+OBJECTS=$(SOURCES:.c=.o)
+EXECUTABLE=parcle
 
-.o:
-	$(CC) -c -o $@.o $@.c
+all: $(SOURCES) $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJECTS)
+	$(LD) $(LDFLAGS) $(OBJECTS) -o $@
+
+.c.o:
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	-rm *.o parcle
+	-rm *.o parcle *.bc
 
 # vim: ts=4 sw=4 st=4 sta tw=80 list
