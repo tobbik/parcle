@@ -4,7 +4,7 @@
 
 package.path = '../?.lua;'..package.path
 
-local Parclate = require('parcle.Parclate')
+local Parclate = require('lib.Parclate')
 
 local template = [[
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" 
@@ -46,8 +46,8 @@ local template = [[
 ]]
 
 local t = Parclate(template)  -- gen tmpl representation from xml string
-print(t)                      -- output table of tmpl representation
--- print(x:serialize())          -- output the template minus the command (l:*) tags
+print(t)                      -- output file representation
+-- print(x:serialize())          -- output the template
 local x= t:compile()          -- create the source code that serializes the template
 
 x.title     = 'My awesome little website'
@@ -64,8 +64,8 @@ print(x)
 x()
 
 
--- nested templates 
-local ts1 ='<b l:for="k in numbers()">I am the <i>${k}</i> line</br /></b>\n'
+-- nested templates with strip
+local ts1 ='<span l:for="k in numbers()" l:strip="">I am the <i>${k}</i> <b>line</b></br />\n</span>'
 local a = Parclate(ts1)()  -- gen tmpl representation from xml string
 a.numbers   = function ()
 	local i=0
@@ -76,6 +76,8 @@ a.numbers   = function ()
 	end
 end
 
+print (a)
+
 local ts2 = [[
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" >
@@ -85,14 +87,17 @@ local ts2 = [[
   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 </head>
 <body>
-  ${nestedloop}
+  ${tostring(nestedloop)}
   <p>TEST: ${char(65,66,67)}</p>
 </body>
 </html>
 ]]
-local b = Parclate(ts2)()  -- gen tmpl representation from xml string
+local bt = Parclate(ts2)    -- gen tmpl representation from xml string
+local b  = Parclate(ts2)()  -- gen tmpl representation from xml string
+print(bt)
 
 b.title      = 'An entirely different webtitle'
-b.nestedloop = tostring(a)
+b.nestedloop = a
 b.char       = string.char     -- string char is not known in templates env
 print(b)
+

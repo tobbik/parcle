@@ -8,6 +8,10 @@ local tostring     = tostring
 local type         = type
 local unpack       = unpack
 
+-- determine version
+-- We use that to determine if "setfenv" or "in env do"
+local v52 = (_VERSION=='Lua 5.2') and true or false
+
 -- implementation
 local Parclate = {}
 
@@ -140,6 +144,7 @@ Parclate.serialize = serialize
  \__\___/  |_| |_|_|\___|--]]
 -- #private: create lua function source code from the arguments
 local dispatch_command = function(cmd, c_buf)
+	local strip =false
 	for c,exp in pairs(cmd) do
 		if 'if' == c then
 			table.insert(c_buf, string.format('\tif %s then\n\t\t', exp) )
@@ -147,7 +152,11 @@ local dispatch_command = function(cmd, c_buf)
 		if 'for' == c then
 			table.insert(c_buf, string.format('\tfor %s do\n\t\t', exp) )
 		end
+		if 'strip' == c then
+			strip = true
+		end
 	end
+	return strip
 end
 
 -- #private: helper to close open functions in the compiled chunk
@@ -160,7 +169,8 @@ local dispatch_command_end = function(cmd, c_buf)
 end
 
 -- #private: combine the last set of continous strings into one chunk
-local compile_buffer = function(c_buf, buffer, f_args)
+local compile_buffer = function(c_buf, buffer, f_args, cnt)
+	if 0==#buffer and 0==#f_args then return cnt end
 	if 0 == #f_args then
 		table.insert(c_buf,
 			' insert(x,[[' .. table.concat(buffer,'') .. ']])\n'
@@ -175,6 +185,7 @@ local compile_buffer = function(c_buf, buffer, f_args)
 		for _=1,#f_args do table.remove(f_args) end
 	end
 	for _=1,#buffer do table.remove(buffer) end
+	return cnt+1
 end
 
 -- #private: renders just the chunk, that actully flushes the template
@@ -186,12 +197,12 @@ local compile_chunk = function (r)
 	local chunk_cnt = 0
 	local c_tag         -- predeclare local for recursive calls
 	c_tag = function(t)
+		local strip = false
 		if t.cmd then
-			compile_buffer(c_buf, buffer, f_args)
-			chunk_cnt=chunk_cnt+1
-			dispatch_command(t.cmd, c_buf)
+			chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
+			strip = dispatch_command(t.cmd, c_buf)
 		end
-		if t.tag then
+		if t.tag and not strip then
 			table.insert(buffer, string.format('<%s', t.tag))
 			if t.arg then
 				for k,v in pairs(t.arg) do
@@ -221,12 +232,11 @@ local compile_chunk = function (r)
 			end
 		end
 		-- close tag
-		if t.tag then
+		if t.tag and not strip then
 			table.insert(buffer, string.format('</%s>', t.tag))
 		end
 		if t.cmd then
-			compile_buffer(c_buf, buffer, f_args)
-			chunk_cnt=chunk_cnt+1
+			chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
 			dispatch_command_end(t.cmd, c_buf)
 		end
 		return
@@ -234,8 +244,7 @@ local compile_chunk = function (r)
 	-- start the actual execution
 	c_tag(r)
 	-- add last chunk to c_buf table
-	compile_buffer(c_buf, buffer, f_args)
-	chunk_cnt=chunk_cnt+1
+	chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
 	table.insert(c_buf, " return concat(x,'')")
 	table.insert(c_buf,1,'}\n')
 	-- prefill the array with a safe amount of empty slots to avoid rehashing
@@ -251,18 +260,34 @@ end
 
 -- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
-	return string.format([[local t,t1={
+	if v52 then
+		return string.format([[local t,t1={
  format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert},{
+ concat=table.concat,insert=table.insert,tostring=tostring},{
  format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert}
+ concat=table.concat,insert=table.insert,tostring=tostring}
+local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
+local r=function()
+ in t do
+%s
+ end
+end
+setmetatable(t,{__tostring=r,__call=f})
+return t]], table.concat(compile_chunk(self)) )
+	else
+		return string.format([[local t,t1={
+ format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert,tostring=tostring},{
+ format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert,tostring=tostring}
 local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
 local r=function()
 %s
 end
 setmetatable(t,{__tostring=r,__call=f})
-setfenv(r,t)
+setfenv(chunk, t)
 return t]], table.concat(compile_chunk(self)) )
+	end
 end
 Parclate.to_file = to_file
 
@@ -274,11 +299,11 @@ Parclate.to_file = to_file
                     |_|              --]]
 -- #public: create a table that represents just the compiled template
 local compile = function(self)
-	local t1,t ={
+	local t1,t = {
 		format = string.format, pairs = pairs, ipairs = ipairs,
-		concat = table.concat,  insert = table.insert
+		concat = table.concat,  insert = table.insert, tostring = tostring
 	},{ format = string.format, pairs = pairs, ipairs = ipairs,
-		concat = table.concat,  insert = table.insert }
+		concat = table.concat,  insert = table.insert, tostring = tostring }
 	-- call() the template to delete all assigned values (for reuse)
 	local flush = function(self)
 		for k,v in pairs(self) do
@@ -288,9 +313,12 @@ local compile = function(self)
 		end
 	end
 	-- prepare the compiled chunk (render function)
-	local chunk = assert( loadstring( table.concat(compile_chunk(self), '') ) )
+	local chunk = (v52) and
+		assert( loadin(t, table.concat(compile_chunk(self)) ))
+		or
+		assert( loadstring(table.concat(compile_chunk(self)) ))
 	setmetatable(t, { __tostring = chunk, __call = flush })
-	setfenv(chunk, t)
+	if not v52 then setfenv(chunk, t) end
 	return t
 end
 Parclate.compile = compile
