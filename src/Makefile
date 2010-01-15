@@ -1,12 +1,12 @@
-CC=clang                                   # modern compiler
+#CC=clang                                   # modern compiler
 #CC=gcc                                    # use gcc - fallback
-#CC=/usr/lib/clang/scan-build/ccc-analyzer # invoke clang static analyzer
+CC=ccc-analyzer                            # invoke clang static analyzer
 LD=llvm-ld -native
 #LD=gcc                                    # fallback
 LDFLAGS=-lpthread -llua -lm
 CFLAGS=-c -Wall -g -O0
 
-SOURCES=main.c server.c http.c app.c config.c
+SOURCES=utils.c main.c server.c http.c app.c config.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=parcle
 
