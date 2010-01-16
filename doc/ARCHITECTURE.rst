@@ -42,14 +42,16 @@ application decisions".  Every request that comes in goes through the following
 
 - select()
 
-	- read_head
-	- write_head
-	- read_file
-	- send_file
+	- read_head   -> parses the HTTP input
+	- write_head  -> writes header for static file or queues connection for Lua
+	                 app thread
+	- read_file   -> reads a chunk of a static file
+	- send_file   -> sends either chunk of static file or the buffer application
+	  output
 
 
-The connections are organized in three different ways, always using the same
-kind of that we call cn_strct. There are three different lists, serving
+The connections are organized in four different ways, always using the same kind
+of structure that we call cn_strct. There are four different lists, serving
 different but related purposes:
 
 	- _Free_conns is a singly linked list, used to store idling cn_strct from
@@ -64,11 +66,15 @@ different but related purposes:
 	  used to queue up connections waiting to be processed by the Lua threads.
 	  _Queue_head organized structs are always part of the _Busy_conns as well,
 	  because that's  how we determine them as "active".
+	- a dynamically sized array we use to index the cn_structs. That is
+	  necessary to pinpoint cn_structs that are finished in the thread and are
+	  ready to be included into the io-loop again. Resizing that array happens
+	  dynamically in steps of the of x^2 to avoid reallocations.
 
 
-=========================
-About templating
-=========================
+==============================
+About templating (Parclate)
+==============================
 
 XML vs non-XML vs HTML(5)
 -------------------------
@@ -76,7 +82,7 @@ XML vs non-XML vs HTML(5)
 Okay, this one sucks. Reading implementations, arguments and papers and working
 with either kind of templating system left me undecided for a long time. But
 like with everything sooner or later I came up with a compromise that works for
-me.  The overall impression I have is that it seems to be easier to work with
+me. The overall impression I have is that it seems to be easier to work with
 templating systems that do incorporate some sort of xml/html tags. There is no
 real technical reason for that in my opinion because a programmer and even a
 designer might be able to wrap his or her mind around any WELL DOCUMENTED
@@ -111,6 +117,16 @@ template gets serialized, Parclate creates string chunks that are as long as
 possible. This flow will only be interrupted by variable substitution or other
 template functionality such as conditions or loops. The result of parclates
 rendering is a string buffer.
+
+Future Ideas
+------------------------
+
+There is no good technical reason to have only XML as starting point. As long as
+there is a parser that can transform some markup into Parclates DOM table
+structure, we could utilize whatever we want. May a language like Djangos or
+makos markup could provide a more generic way to create freeform text templates
+that then could be used to create Emails, dynamically generated JavaScript files
+or whatever we need.
 
 =============================
 Utilized or bundled Libraries

@@ -5,11 +5,11 @@ Developer information
 Guidelines for the parcle development
 -------------------------------------
 
-Parcle is written in Lua, a small, lightweight and very flexible language. The
-majority of web-frameworks these days are written utilizing the MVC design
-pattern. MVC is easier to implement when the framework is following an object
-oriented programming(referred to as OOP from here on) style and the majority of
-functionalities is provided as classes.
+Parcle is written in Lua, a small, lightweight and very flexible scripting
+language. The majority of web-frameworks these days are written utilizing the
+MVC design pattern. MVC is easier to implement when the framework is following
+an object oriented programming(referred to as OOP from here on) style and the
+majority of functionalities is provided as classes.
 
 Lua, by default, is not an object oriented language. However, it's flexibility
 allows for the implementation of our own class/oop design. This document will
@@ -26,7 +26,7 @@ development.
 Coding rules
 ------------
 Parcle has a C core (server and some libraries). For these C files we use the
-following convention, widely known as "Kernel style"
+following convention, widely known as "kernel style"
 
 	- function declaration span 3 lines: 1st return type, 2nd function name and
 	  arguments and 3rd opening curly bracket aligned to the left
