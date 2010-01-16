@@ -105,23 +105,6 @@ server_loop(int argc, char *argv[])
 			readsocks--;
 		}
 
-		/* Has an app thread finished ? */
-		for (i=0; i<WORKER_THREADS; i++) {
-			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
-				readsocks--;
-				rp = read(_Workers[i].r_pipe, answer, ANSWER_LENGTH);
-				answer[rp] = '\0';
-				//printf("ANSWER: %s --- ", answer);
-				cn_id = strtok(answer, " ");
-				while(cn_id != NULL) {
-					_All_conns[atoi(cn_id)]->req_state = REQSTATE_SEND_FILE;
-					cn_id = strtok(NULL, " ");
-				}
-				readsocks--;
-				//printf("\n");
-			}
-		}
-
 		// Handle the established sockets
 		tp = _Busy_conns;
 
@@ -160,6 +143,23 @@ server_loop(int argc, char *argv[])
 				printf("WANNA SEND FILE\n");
 #endif
 				send_file(to);
+			}
+		}
+
+		/* Has an app thread finished ? The put back in wfds */
+		for (i=0; i<WORKER_THREADS; i++) {
+			if (FD_ISSET (_Workers[i].r_pipe, &rfds) ) {
+				readsocks--;
+				rp = read (_Workers[i].r_pipe, answer, ANSWER_LENGTH);
+				answer[rp] = '\0';
+				// printf("ANSWER: %s --- ", answer);
+				cn_id = strtok (answer, " ");
+				while(cn_id != NULL) {
+					_All_conns[ atoi (cn_id) ]->req_state = REQSTATE_SEND_FILE;
+					cn_id = strtok (NULL, " ");
+				}
+				readsocks--;
+				//printf("\n");
 			}
 		}
 	}
@@ -237,11 +237,10 @@ add_conn_to_list(int sd, char *ip)
 static void
 handle_new_conn( int listen_sd )
 {
-	int x;
 	struct sockaddr_in their_addr;
 	socklen_t tp = sizeof(struct sockaddr_in);
 	int connfd = accept(listen_sd, (struct sockaddr *)&their_addr, &tp);
-	x = fcntl(connfd, F_GETFL, 0);              /* Get socket flags */
+	int x = fcntl(connfd, F_GETFL, 0);              /* Get socket flags */
 	fcntl(connfd, F_SETFL, x | O_NONBLOCK);     /* Add non-blocking flag */
 	add_conn_to_list(connfd, inet_ntoa(their_addr.sin_addr));
 }
