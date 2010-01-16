@@ -1,5 +1,5 @@
-#CC=clang                                   # modern compiler
-CC=gcc                                    # use gcc - fallback
+CC=clang                                   # modern compiler
+#CC=gcc                                    # use gcc - fallback
 #CC=ccc-analyzer                            # invoke clang static analyzer
 LD=llvm-ld -native
 #LD=gcc                                    # fallback
