@@ -10,21 +10,21 @@
 #include <sys/socket.h>     /* cn_strct->net_socket */
 
 /* A few constants */
-#define BACK_LOG             5    /* How many sockets waiting for accept */
+#define BACK_LOG             8    /* How many sockets waiting for accept */
 
 #define RECV_BUFF_LENGTH     8196 /* Main buffer assigned to each connection */
-
 #define INIT_CONNS           3    /* start with 2^4 preallocated connections*/
-
+#define ANSWER_LENGTH        256  /* length of ipc buffer */
 #define WORKER_THREADS       2    /* keep that close to #CPU cores */
-#define HTTP_PORT            8000 /* for now a simple static value */
 #define HTTP_VERSION         "HTTP/1.1"  /* we answer in HTTP 1.1 */
 #define DEBUG_VERBOSE        2    /* dirty printfs all over the place */
-#define WEB_ROOT             "./" /* we serve out of current directory */
-#define ANSWER_LENGTH        256  /* length of ipc buffer */
 
-#define STATIC_ROOT          "webroot" /* if your URL starts with that, it's static */
-#define STATIC_ROOT_LENGTH   7         /* used for string matches */
+/* These are preference that can be over ridden by args or configs */
+#define APP_PORT             8000 /* for now a simple static value */
+#define APP_ROOT             "sample" /* the standard directory fr apps */
+
+#define STATIC_ROOT          "static"  /* if your URL starts with that, it's static */
+#define STATIC_ROOT_LENGTH   6         /* used for string matches */
 
 
 /* ########################### DATA STRUCTURES ############################# */

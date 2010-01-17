@@ -358,7 +358,6 @@ static void
 write_head (struct cn_strct *cn)
 {
 	char       buf[RECV_BUFF_LENGTH];
-	char       *url;
 	struct     stat stbuf;
 	int        file_exists;
 	time_t     now = time(NULL);
@@ -373,22 +372,14 @@ write_head (struct cn_strct *cn)
 	}
 
 	cn->url++;              /* eat leading slash */
-	url = cn->url;
-	if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH ) ||
-	    0 == strncasecmp(cn->url, ROBOTS_URL,  ROBOTS_URL_LENGTH ) ) {
-		cn->is_static=true;
-		snprintf(buf, sizeof(buf),STATIC_ROOT"/%s", cn->url);
-		cn->url = buf;
-		cn->is_static=true;
-		file_exists = stat(cn->url, &stbuf);
-	}
-	else if ( 0 == strncasecmp(cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH )) {
-		cn->is_static=true;
-		file_exists = stat(cn->url, &stbuf);
-	}
-
 	/* check if we request a static file */
-	if (cn->is_static) {
+	if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH ) ||
+	    0 == strncasecmp(cn->url, ROBOTS_URL,  ROBOTS_URL_LENGTH )  ||
+	    0 == strncasecmp(cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH )) {
+
+		cn->is_static=true;
+
+		file_exists = stat(cn->url, &stbuf);
 		if (file_exists == -1) {
 			//send_error(cn, 404);
 			printf("Sorry dude, didn't find the file: %s\n", cn->url);
@@ -411,7 +402,6 @@ write_head (struct cn_strct *cn)
 			_Master_date
 			//ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
-		cn->url = url;
 		send(cn->net_socket, buf, strlen(buf), 0);
 
 		/* FIXME: we assume the head gets send of in one rush */

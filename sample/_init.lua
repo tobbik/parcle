@@ -1,3 +1,5 @@
+package.path = '../?.lua;'..package.path
+
 Parclate = require('lib.Parclate')
 local output={}
 local t = Parclate([[<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
