@@ -178,8 +178,6 @@ add_conn_to_list(int sd, char *ip)
 
 	/* pop a cn_strct from the free list ... or create one */
 	if (NULL == _Free_conns) {
-		//printf("COUNT: %d -- SIZE: %d -- %d\n",
-		//	_Conn_count, pow2(_Conn_size), _Conn_size);
 		if (pow2(_Conn_size) <= _Conn_count) {
 			_Conn_size++;
 			_All_conns = (struct cn_strct **)
@@ -257,35 +255,20 @@ remove_conn_from_list( struct cn_strct *cn )
 
 	if (NULL == tp->c_prev) {          /* tail of _Busy_conns */
 		if (NULL == tp->c_next) {      /* only one in the list */
-			//printf("BUSY TAIL EMPTY at last: %d %s\n",
-			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
 			_Busy_conns = NULL;
 		}
 		else {
-			//printf("BUSY TAIL EMPTY with more: %d %s\n",
-			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
-			if (tp != _Busy_conns) {
-				print_cn(tp);
-				if (cn->net_socket != -1) {
-					close(cn->net_socket);
-				}
-				return;
-			}
-			else {
-				tp->c_next->c_prev  = NULL;
-				_Busy_conns         = tp->c_next;
-			}
+			tp->c_next->c_prev  = NULL;
+			_Busy_conns         = tp->c_next;
 		}
 		_Busy_count--;
 	}
 	else if (NULL == tp->c_next) {    /* head of _Busy_conns */
-		//printf("REMOVE FROM BUSY HEAD at %d\n", tp->id);
 		tp->c_prev->c_next  = NULL;
 		tp->c_prev          = NULL;
 		_Busy_count--;
 	}
 	else {
-		//printf("REMOVE FROM INNER BUSY at %d\n", tp->id);
 		tp->c_prev->c_next = tp->c_next;
 		tp->c_next->c_prev = tp->c_prev;
 		_Busy_count--;
