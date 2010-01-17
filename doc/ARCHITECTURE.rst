@@ -38,38 +38,53 @@ server that actually can do the negotiation for you. For dynamic requests
 however, we are able to parse the headers with the C functions and pass on the
 results to the Lua interpreter where a user can utilize that headers for "in
 application decisions".  Every request that comes in goes through the following
-4 states that are modelled in the loop:
+4 states that are modelled in the loop (none of these steps are guaranteed to
+succeed in on run, since it is all non blocking):
 
-- select()
+1. read_request()      -> put incoming bytes into the main buffer
 
-	- read_head   -> parses the HTTP input
-	- write_head  -> writes header for static file or queues connection for Lua
-	                 app thread
-	- read_file   -> reads a chunk of a static file
-	- send_file   -> sends either chunk of static file or the buffer application
-	  output
+   - when reached second line interpret the first one and parse url
+   - determine if static or dynamic request
+   - when we hit the end of header go to next step
+
+2. write_head()        -> write static header to socket
+
+   - if static, stat(file) and write that info, the proceed to next step
+   - if dynamic, enqueue for Thread pool, remove from select loop
+
+3. buffer_file()       -> fill buffer with file content or app buffer
+
+   - if static, fill the buffer and go to next step, this will be repeated
+     until the entire file is sent
+   - if dynamic, wait until the thread has filled the buffer, then send a
+     notice from the thread to the main loop(pipe ipc) that connection x is
+     ready, include that connection's socket in the main loop again
+
+4. send_file()         -> send buffer to socket
+
+   - either the file buffer or the application buffer gets sent out
 
 
 The connections are organized in four different ways, always using the same kind
 of structure that we call cn_strct. There are four different lists, serving
 different but related purposes:
 
-	- _Free_conns is a singly linked list, used to store idling cn_strct from
-	  which we we can pull as soon as a new connection comes in. It is organized
-	  as a LIFO stack, because we wanna (re)use cn_structs not used so long ago
-	  in order to make sure to reuse memory soon before it might get paged.
-	  _Free_conns itself points to the tail of the stack
-	- _Busy_conns is a doubly linked list. That saves us a log(n) operation when
-	  the connection gets removed from the _Busy_conns. _Busy_conns itself
-	  points to the tail of the stack
-	- _Queue_head/_Queue_tail is singly linked list, organized as a FIFO stack,
-	  used to queue up connections waiting to be processed by the Lua threads.
-	  _Queue_head organized structs are always part of the _Busy_conns as well,
-	  because that's  how we determine them as "active".
-	- a dynamically sized array we use to index the cn_structs. That is
-	  necessary to pinpoint cn_structs that are finished in the thread and are
-	  ready to be included into the io-loop again. Resizing that array happens
-	  dynamically in steps of the of x^2 to avoid reallocations.
+   - _Free_conns is a singly linked list, used to store idling cn_strct from
+     which we we can pull as soon as a new connection comes in. It is organized
+     as a LIFO stack, because we wanna (re)use cn_structs not used so long ago
+     in order to make sure to reuse memory soon before it might get paged.
+     _Free_conns itself points to the tail of the stack
+   - _Busy_conns is a doubly linked list. That saves us a log(n) operation when
+     the connection gets removed from the _Busy_conns. _Busy_conns itself
+     points to the tail of the stack
+   - _Queue_head/_Queue_tail is singly linked list, organized as a FIFO stack,
+     used to queue up connections waiting to be processed by the Lua threads.
+     _Queue_head organized structs are always part of the _Busy_conns as well,
+     because that's  how we determine them as "active".
+   - a dynamically sized array we use to index the cn_structs. That is
+     necessary to pinpoint cn_structs that are finished in the thread and are
+     ready to be included into the io-loop again. Resizing that array happens
+     dynamically in steps of the of x^2 to avoid reallocations.
 
 
 ==============================

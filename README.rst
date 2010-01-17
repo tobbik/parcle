@@ -17,7 +17,7 @@ Parcle is targeted towards Lua 5.1.4 but will try to move to Lua 5.2 as it comes
 out. There shall be no problems when using LuaJIT instead.
 
 Basic ideas it is modelled around:
----------------------------------
+----------------------------------
 
  - organize the busy and free connection structs in linked lists for easy
    flexible access
@@ -45,7 +45,7 @@ Check out the future. The main build system is based on clang, the new C
 frontend to LLVM. Much better error messages make it all worth wile. Lua must be
 installed. Running "make" invokes clang, assuming you have it installed. Running
 make with gcc can be done this way:
-	make CC=gcc LD=gcc
+make CC=gcc LD=gcc
 
 Plans/Ideas:
 ------------
@@ -60,24 +60,6 @@ Plans/Ideas:
  - utilize Lua_buffer when we come across POST styled requests
 
 
-Order of processing (none of these steps are guaranteed to succeed in on run,
-since it is all non blocking):
-
-	1. read_request()      -> put incoming bytes into the main buffer  
-	  - when reached second line interpret the first one and parse url
-	  - determine if static or dynamic request
-	  - when we hit the end of header go to next step
-	2. write_head()        -> write static header to socket
-	  - if static, stat(file) and write that info, the proceed to next step
-	  - if dynamic, enqueue for Thread pool, remove from select loop
-	3. buffer_file()       -> fill buffer with file content or app buffer
-	  - if static, fill the buffer and go to next step, this will be repeated
-	    until the entire file is sent
-	  - if dynamic, wait until the thread has filled the buffer, then send a
-	    notice from the thread to the main loop(pipe ipc) that connection x is
-	    ready, include that connection's socket in the main loop again
-	4. send_file()         -> send buffer to socket
-	  - either the file buffer or the application buffer gets sent out
 
 
 

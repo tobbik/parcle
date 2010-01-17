@@ -28,11 +28,11 @@ Coding rules
 Parcle has a C core (server and some libraries). For these C files we use the
 following convention, widely known as "kernel style"
 
-	- function declaration span 3 lines: 1st return type, 2nd function name and
-	  arguments and 3rd opening curly bracket aligned to the left
-	- loops and conditions statements opening curly brackets are on the same
-	  line
-	- else statements open a new line, aligned with the preceding if statement
+   - function declaration span 3 lines: 1st return type, 2nd function name and
+     arguments and 3rd opening curly bracket aligned to the left
+   - loops and conditions statements opening curly brackets are on the same
+     line
+   - else statements open a new line, aligned with the preceding if statement
 
 Tabs/spaces: Parcles code, Lua or C uses tabs, default to 4 chars wide
 
@@ -43,7 +43,7 @@ There are many suggested implementations for OOP characteristics in Lua. Luas
 design by default enables to design a more prototype based inheritance and
 instantiation rather than a class->instance based design as it is widely known
 in the Java/C#/C++ world. For the sake of the omitted (not missing) "new"
-keyword in Lua, the blue `PiL`_ suggest a syntax like this to instantiate new
+keyword in Lua, the "blue PiL" [#]_ suggest a syntax like this to instantiate new
 objects: instance = Classname:new() , where new() is a method on a table, by
 convention the constructor of the class. However, looking at other languages,
 especially python, instance = Classname() might be a cleaner/nicer way to call
@@ -53,14 +53,14 @@ easy to achieve.
 
 Parcle's classes are NOT implemented using the module function. After reading
 the mailing list and the excellent "critique of the module function"
-[modcrtique]_ available on the lua-users wiki, it seems most desireable to
+modcrtique_ available on the lua-users wiki, it seems most desireable to
 provide good encapsulation and allow to be flexible with names upon import, aka.
 local thisName=require('Classname')
 
 
-  _PiL: Roberto Ierusalimschy, "Programming in Lua", 1st edition, 2003, _OOP in
-  Lua: http://www.lua.org/pil/16.html
-  [#modcrtique]: http://lua-users.org/wiki/LuaModuleFunctionCritiqued 
+   .. [#] Roberto Ierusalimschy, "Programming in Lua", 1st edition, 2003, _OOP in
+      Lua: http://www.lua.org/pil/16.html
+   .. _modcrtique: http://lua-users.org/wiki/LuaModuleFunctionCritiqued 
 
 
 # vim: ts=4 sw=4 st=4 sta tw=80 ft=rest
