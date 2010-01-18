@@ -19,12 +19,6 @@
 #include "parcle.h"
 #include "utils.h"            /* pow2() */
 
-/* special cases served from the STATIC_ROOT directory */
-#define FAVICON_URL           "favicon.ico"
-#define FAVICON_URL_LENGTH    11
-#define ROBOTS_URL            "robots.txt"
-#define ROBOTS_URL_LENGTH     10
-
 
 
 /* connection helpers for main server_loop */
@@ -106,23 +100,6 @@ server_loop()
 			readsocks--;
 		}
 
-		/* Has an app thread finished ? */
-		for (i=0; i<WORKER_THREADS; i++) {
-			if (FD_ISSET(_Workers[i].r_pipe, &rfds)) {
-				readsocks--;
-				rp = read(_Workers[i].r_pipe, answer, ANSWER_LENGTH);
-				answer[rp] = '\0';
-				//printf("ANSWER: %s --- ", answer);
-				cn_id = strtok(answer, " ");
-				while(cn_id != NULL) {
-					_All_conns[atoi(cn_id)]->req_state = REQSTATE_SEND_FILE;
-					cn_id = strtok(NULL, " ");
-				}
-				readsocks--;
-				//printf("\n");
-			}
-		}
-
 		// Handle the established sockets
 		tp = _Busy_conns;
 
@@ -163,9 +140,25 @@ server_loop()
 				send_file(to);
 			}
 		}
+
+		/* Has an app thread finished ? The put back in wfds */
+		for (i=0; i<WORKER_THREADS; i++) {
+			if (FD_ISSET (_Workers[i].r_pipe, &rfds) ) {
+				readsocks--;
+				rp = read (_Workers[i].r_pipe, answer, ANSWER_LENGTH);
+				answer[rp] = '\0';
+				// printf("ANSWER: %s --- ", answer);
+				cn_id = strtok (answer, " ");
+				while(cn_id != NULL) {
+					_All_conns[ atoi (cn_id) ]->req_state = REQSTATE_SEND_FILE;
+					cn_id = strtok (NULL, " ");
+				}
+				readsocks--;
+				//printf("\n");
+			}
+		}
 	}
 }
-
 
 /*
  * get a socket and form a cn_strct around it
@@ -179,8 +172,6 @@ add_conn_to_list(int sd, char *ip)
 
 	/* pop a cn_strct from the free list ... or create one */
 	if (NULL == _Free_conns) {
-		//printf("COUNT: %d -- SIZE: %d -- %d\n",
-		//	_Conn_count, pow2(_Conn_size), _Conn_size);
 		if (pow2(_Conn_size) <= _Conn_count) {
 			_Conn_size++;
 			_All_conns = (struct cn_strct **)
@@ -204,17 +195,14 @@ add_conn_to_list(int sd, char *ip)
 		memset(tp->data_buf_head, 0, RECV_BUFF_LENGTH * sizeof(char));
 		_Free_count--;
 	}
-	//printf("FREE before done: %d\n", _Free_count);
 
 	/* attach to tail of the _Busy_conns */
 	if (NULL == _Busy_conns) {
-		//printf("ATTACH TO EMPTY BUSY CONNS at %d\n", _Busy_count);
 		tp->c_next          = NULL;
 		tp->c_prev          = NULL;
 		_Busy_conns         = tp;
 	}
 	else {
-		//printf("ATTACH TO BUSY CONNS TAIL at %d\n", _Busy_count);
 		tp->c_next          = _Busy_conns;
 		_Busy_conns->c_prev = tp;
 		_Busy_conns         = tp;
@@ -230,7 +218,7 @@ add_conn_to_list(int sd, char *ip)
 	tp->req_type         = REQTYPE_GET;
 	tp->processed_bytes  = 0;
 	tp->line_count       = 0;
-	tp->pay_load         = '\0';
+	tp->get_str          = NULL;
 	tp->is_static        = false;
 	tp->url              = NULL;
 }
@@ -238,11 +226,10 @@ add_conn_to_list(int sd, char *ip)
 static void
 handle_new_conn( int listen_sd )
 {
-	int x;
 	struct sockaddr_in their_addr;
 	socklen_t tp = sizeof(struct sockaddr_in);
 	int connfd = accept(listen_sd, (struct sockaddr *)&their_addr, &tp);
-	x = fcntl(connfd, F_GETFL, 0);              /* Get socket flags */
+	int x = fcntl(connfd, F_GETFL, 0);              /* Get socket flags */
 	fcntl(connfd, F_SETFL, x | O_NONBLOCK);     /* Add non-blocking flag */
 	add_conn_to_list(connfd, inet_ntoa(their_addr.sin_addr));
 }
@@ -259,35 +246,20 @@ remove_conn_from_list( struct cn_strct *cn )
 
 	if (NULL == tp->c_prev) {          /* tail of _Busy_conns */
 		if (NULL == tp->c_next) {      /* only one in the list */
-			//printf("BUSY TAIL EMPTY at last: %d %s\n",
-			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
 			_Busy_conns = NULL;
 		}
 		else {
-			//printf("BUSY TAIL EMPTY with more: %d %s\n",
-			//	tp->id, (tp==_Busy_conns)?"eqaul":"notqual");
-			if (tp != _Busy_conns) {
-				print_cn(tp);
-				if (cn->net_socket != -1) {
-					close(cn->net_socket);
-				}
-				return;
-			}
-			else {
-				tp->c_next->c_prev  = NULL;
-				_Busy_conns         = tp->c_next;
-			}
+			tp->c_next->c_prev  = NULL;
+			_Busy_conns         = tp->c_next;
 		}
 		_Busy_count--;
 	}
 	else if (NULL == tp->c_next) {    /* head of _Busy_conns */
-		//printf("REMOVE FROM BUSY HEAD at %d\n", tp->id);
 		tp->c_prev->c_next  = NULL;
 		tp->c_prev          = NULL;
 		_Busy_count--;
 	}
 	else {
-		//printf("REMOVE FROM INNER BUSY at %d\n", tp->id);
 		tp->c_prev->c_next = tp->c_next;
 		tp->c_next->c_prev = tp->c_prev;
 		_Busy_count--;
@@ -298,7 +270,6 @@ remove_conn_from_list( struct cn_strct *cn )
 	cn->c_prev          = NULL;
 	_Free_conns         = cn;
 	_Free_count++;
-	// printf("FREE after done: %d\n", _Free_count);
 
 	/* Close it all down */
 	if (cn->net_socket != -1) {
@@ -366,19 +337,21 @@ read_request( struct cn_strct *cn )
 		printf("METHOD: %d\n",   cn->req_type);
 		printf("URL: %s\n",      cn->url);
 		printf("PROTOCOL: %d\n", cn->http_prot);
-		printf("PAYLOAD: %s\n",  cn->pay_load);
+		printf("GET: %s\n",      cn->get_str);
 	}
 #endif
 }
 
-/*
+/* depending on if it is static or dynamic
+ *  - static:  stat(file), send header, prepare for file buffering
+ *  - dynamic: enqueue for thread pool, let it handle everything
  */
 static void
 write_head (struct cn_strct *cn)
 {
 	char       buf[RECV_BUFF_LENGTH];
-	char       *url;
 	struct     stat stbuf;
+	char      *file_url;
 	int        file_exists;
 	time_t     now = time(NULL);
 	struct tm *tm_struct;
@@ -391,32 +364,18 @@ write_head (struct cn_strct *cn)
 		strftime( _Master_date, 30, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
 	}
 
-	cn->url++;              /* eat leading slash */
-	url = cn->url;
-	if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH ) ||
-	    0 == strncasecmp(cn->url, ROBOTS_URL,  ROBOTS_URL_LENGTH ) ) {
-		cn->is_static=true;
-		snprintf(buf, sizeof(buf),STATIC_ROOT"/%s", cn->url);
-		cn->url = buf;
-		cn->is_static=true;
-		file_exists = stat(cn->url, &stbuf);
-	}
-	else if ( 0 == strncasecmp(cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH )) {
-		cn->is_static=true;
-		file_exists = stat(cn->url, &stbuf);
-	}
-
+	file_url = cn->url+1;              /* eat leading slash */
 	/* check if we request a static file */
 	if (cn->is_static) {
+		file_exists = stat(file_url, &stbuf);
 		if (file_exists == -1) {
 			//send_error(cn, 404);
-			printf("Sorry dude, didn't find the file: %s\n", cn->url);
+			printf("Sorry dude, didn't find the file: %s\n", file_url);
 			remove_conn_from_list(cn);
 			return;
 		}
 
-		cn->file_desc = open(cn->url, O_RDONLY);
-
+		cn->file_desc = open(file_url, O_RDONLY);
 		cn->processed_bytes = (size_t) snprintf(buf, sizeof(buf),
 			HTTP_VERSION" 200 OK\r\n"
 			"Server: %s\r\n"
@@ -425,12 +384,11 @@ write_head (struct cn_strct *cn)
 			"Date: %s\r\n\r\n",
 			//"Last-Modified: %s\r\n",
 			_Server_version,
-			get_mime_type(cn->url),
+			get_mime_type(file_url),
 			(long) stbuf.st_size,
 			_Master_date
 			//ctime(&stbuf.st_mtime)
 		); /* ctime() has a \n on the end */
-		cn->url = url;
 		send(cn->net_socket, buf, strlen(buf), 0);
 
 		/* FIXME: we assume the head gets send of in one rush */

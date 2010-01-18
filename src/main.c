@@ -49,8 +49,8 @@ int                  _Queue_count;
 struct thread_arg    _Workers[WORKER_THREADS]; /* used to clean up */
 
 
-static int   create_listener        ( int port );
-
+static int   create_listener  ( int port );
+static void  start_server     ( char *app_root, int port );
 
 /* clean up after Ctrl+C or shutdown */
 static void
@@ -109,6 +109,34 @@ die(int sig)
 int
 main(int argc, char *argv[])
 {
+	char    *command;
+
+	command = argv[1];
+	/* TODO: do some error handling here */
+	if (1 < argc && 0 == strncmp(command, "server",  6)) {
+		switch (argc) {
+			case 4:
+				start_server(argv[2], (int) strtol(argv[3],NULL,10));
+				break;
+			case 3:
+				start_server(argv[2], APP_PORT);
+				break;
+			default:
+				start_server(APP_ROOT, APP_PORT);
+		}
+	}
+	else if (1 < argc && 0 == strncmp(command, "shell",  5)) {
+		printf("Shell functionality is not yet implemented\n");
+	}
+	else {
+		start_server(APP_ROOT, APP_PORT);
+	}
+	return 0;
+}
+
+static void
+start_server( char *app_root, int port )
+{
 	struct cn_strct  *tp;
 	int               i,f,r;
 	struct tm        *tm_struct;
@@ -129,8 +157,8 @@ main(int argc, char *argv[])
 	signal(SIGTERM, die);
 	signal(SIGINT, clean_on_quit);
 
-	// DIRTY!!! we work out of the webroot directory -> change to it
-	if (chdir(WEB_ROOT))
+	/* enter the directory with the application */
+	if (chdir(app_root))
 		clean_on_quit(2);
 
 	/* Fill up the initial connection lists; _Free_conns is just a LIFO stack,
@@ -155,9 +183,9 @@ main(int argc, char *argv[])
 	}
 
 	/* create the master listener */
-	if ((_Master_sock = create_listener(HTTP_PORT)) == -1) {
+	if ((_Master_sock = create_listener(port)) == -1) {
 		fprintf(stderr, "ERR: Couldn't bind to port %d\n",
-				HTTP_PORT);
+				port);
 		exit(1);
 	}
 
@@ -188,14 +216,12 @@ main(int argc, char *argv[])
 
 #if DEBUG_VERBOSE == 1
 	printf("%s: listening on port %d (http)\n",
-			_Server_version, HTTP_PORT);
+			_Server_version, port);
 #endif
 
 	/* Kick it off */
 	server_loop();
-	return 0;
 }
-
 
 /* create the master listening socket */
 static int

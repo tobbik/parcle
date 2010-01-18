@@ -9,21 +9,23 @@
 #include <pthread.h>        /* mutexes, conditions  */
 #include <sys/socket.h>     /* cn_strct->net_socket */
 
+#include "lua.h"            /* lua_State */
+
 /* A few constants */
-#define BACK_LOG             5    /* How many sockets waiting for accept */
+#define BACK_LOG             8    /* How many sockets waiting for accept */
 
 #define RECV_BUFF_LENGTH     8196 /* Main buffer assigned to each connection */
-
 #define INIT_CONNS           3    /* start with 2^4 preallocated connections*/
-
+#define ANSWER_LENGTH        256  /* length of ipc buffer */
 #define WORKER_THREADS       2    /* keep that close to #CPU cores */
-#define HTTP_PORT            8000 /* for now a simple static value */
 #define HTTP_VERSION         "HTTP/1.1"  /* we answer in HTTP 1.1 */
 #define DEBUG_VERBOSE        2    /* dirty printfs all over the place */
-#define WEB_ROOT             "./" /* we serve out of current directory */
-#define ANSWER_LENGTH        256  /* length of ipc buffer */
 
-#define STATIC_ROOT          "webroot" /* if your URL starts with that, it's static */
+/* These are preference that can be over ridden by args or configs */
+#define APP_PORT             8000 /* for now a simple static value */
+#define APP_ROOT             "sample" /* the standard directory fr apps */
+
+#define STATIC_ROOT          "/static"  /* if your URL starts with that, it's static */
 #define STATIC_ROOT_LENGTH   7         /* used for string matches */
 
 
@@ -44,7 +46,10 @@ enum req_states {
 enum req_types {
 	REQTYPE_GET,
 	REQTYPE_HEAD,
-	REQTYPE_POST
+	REQTYPE_POST,
+	REQTYPE_PUT,
+	REQTYPE_OPTIONS,
+	REQTYPE_DELETE
 };
 
 enum http_version {
@@ -83,7 +88,8 @@ struct cn_strct {
 	/* head information */
 	enum    req_types     req_type;
 	char                 *url;              /* points to pos in buffer, where url starts */
-	char                 *pay_load;         /* what's past the ? in url */
+	char                 *get_str;          /* what's past the ? in url */
+	char                 *post_str;         /* what's past the body */
 	enum    http_version  http_prot;        /* not that we would care ...*/
 
 	enum    bool          is_static;        /* serve a file, don't run app */
@@ -96,7 +102,7 @@ struct cn_strct {
 #if DEBUG_VERBOSE == 2
 void  print_list             ( struct cn_strct *nd );
 void  print_queue            ( struct cn_strct *nd, int count );
-void  print_cn               ( struct cn_strct *cn);
+void  print_cn               ( struct cn_strct *cn );
 #endif
 
 /* string parsing methods -> disect HTTP header */

@@ -6,7 +6,7 @@ LD=llvm-ld -native
 LDFLAGS=-lpthread -llua -lm
 CFLAGS=-c -Wall -g -O0
 
-SOURCES=utils.c main.c server.c http.c app.c config.c
+SOURCES=utils.c wsapi.c main.c server.c http.c app.c config.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLE=parcle
 

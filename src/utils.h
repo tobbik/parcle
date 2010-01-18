@@ -4,17 +4,5 @@
  * libraries
  *
  */
-struct IeeeFloat {
-	unsigned int base : 23;
-	unsigned int exponent : 8;
-	unsigned int signBit : 1;
-};
-
-
-union IeeeFloatUnion {
-	struct IeeeFloat brokenOut;
-	float f;
-};
-
 int pow2(char exponent);
 
