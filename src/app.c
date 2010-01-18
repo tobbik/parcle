@@ -39,7 +39,6 @@ void
 	struct thread_arg   *args;
 	struct cn_strct     *cn;
 	struct request_env  *re;
-	int                  sent;
 	char                 answer_buf[ANSWER_LENGTH];
 
 	args = (struct thread_arg *) targs;
@@ -50,7 +49,7 @@ void
 	l_register_request(L);
 	luaL_openlibs (L);
 	if (luaL_loadfile(L, "_init.lua") || lua_pcall(L, 0, 0, 0))
-		error(L, "cannot run file: %s", lua_tostring(L, -1));
+		luaL_error(L, "cannot run file: %s", lua_tostring(L, -1));
 
 	while(1) {
 		/* monitor */

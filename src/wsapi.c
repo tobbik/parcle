@@ -15,6 +15,7 @@
  */
 #include <stdio.h>              /* sadly, some printf statements */
 #include <string.h>             /* strncasecmp(), ... */
+#include <ctype.h>              /* isxdigit()  */
 
 #include "lua.h"
 #include "lualib.h"
@@ -26,7 +27,7 @@
 /* internal forward declarations */
 static int l_req_dispatch      ( lua_State *L );
 static int l_req_immutable     ( lua_State *L );
-static int l_req_size          ( lua_State *L, struct cn_strct *cn );
+static int l_req_size          ( lua_State *L);
 //static int l_req_get           ( lua_State *L, struct cn_strct *cn );
 //static int l_req_method        ( lua_State *L, struct cn_strct *cn );
 //static int l_req_query_string  ( lua_State *L, struct cn_strct *cn );
@@ -84,8 +85,9 @@ l_req_immutable (lua_State *L)
  * @return: integer - whatever makes sense as len(req)
  * */
 static int
-l_req_size (lua_State *L, struct cn_strct *cn)
+l_req_size (lua_State *L)
 {
+	//struct request_env *re  = (struct request_env*) lua_touserdata(L, 1);
 	lua_pushinteger(L, 111); // stupid static value for now
 	return 1; /* one string or one nil value */
 }
@@ -183,7 +185,7 @@ l_req_dispatch (lua_State *L)
 	else if (0 == strncasecmp(key, "path_info", 9)) {
 		return l_req_path_info(L, re->cn);
 	}
-
+	return 0;
 }
 
 /*          _                            _

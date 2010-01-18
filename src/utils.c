@@ -4,8 +4,6 @@
  * libraries
  *
  */
-#include <ctype.h>                  /* isxdigit()  */
-
 #include "utils.h"
 
 /* a fast pow(2,x) that returns only integers; from stackoverflow.com */
