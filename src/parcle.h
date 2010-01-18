@@ -23,8 +23,8 @@
 #define APP_PORT             8000 /* for now a simple static value */
 #define APP_ROOT             "sample" /* the standard directory fr apps */
 
-#define STATIC_ROOT          "static"  /* if your URL starts with that, it's static */
-#define STATIC_ROOT_LENGTH   6         /* used for string matches */
+#define STATIC_ROOT          "/static"  /* if your URL starts with that, it's static */
+#define STATIC_ROOT_LENGTH   7         /* used for string matches */
 
 
 /* ########################### DATA STRUCTURES ############################# */

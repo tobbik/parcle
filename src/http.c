@@ -11,6 +11,12 @@
 
 #include "parcle.h"
 
+/* special cases served from the APP_ROOT directory */
+#define FAVICON_URL           "/favicon"
+#define FAVICON_URL_LENGTH    8
+#define ROBOTS_URL            "/robots"
+#define ROBOTS_URL_LENGTH     7
+
 /*
  * * Isolate "METHOD URL?GET_PARAMS HTTP_VER" from first request line
  * - count '/' to help the url delimiter, count '?/ to get parser
@@ -29,10 +35,15 @@ parse_first_line( struct cn_strct *cn )
 	next++;
 	if ('/' == *next) {
 		cn->url = next;
+		if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH ) ||
+		    0 == strncasecmp(cn->url, ROBOTS_URL,  ROBOTS_URL_LENGTH )  ||
+		    0 == strncasecmp(cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH )) {
+			cn->is_static = true;
+		}
 	}
 	else {
-		// we are extremely unhappy ... -> malformed url
-		// error(400, "URL has to start with a '/'!");
+		/* we are extremely unhappy ... -> malformed url
+		   error(400, "URL has to start with a '/'!"); */
 		printf("Crying game....\n");
 	}
 	/* chew through url, find GET, check url sanity */
@@ -56,7 +67,7 @@ parse_first_line( struct cn_strct *cn )
 					error = 400;  /* trying to reach hidden files */
 				break;
 			default:
-				// keep chewing
+				/* keep chewing */
 				break;
 		}
 		next++;

@@ -18,12 +18,6 @@
 #include "parcle.h"
 #include "utils.h"            /* pow2() */
 
-/* special cases served from the STATIC_ROOT directory */
-#define FAVICON_URL           "favicon.ico"
-#define FAVICON_URL_LENGTH    11
-#define ROBOTS_URL            "robots.txt"
-#define ROBOTS_URL_LENGTH     10
-
 
 
 /* connection helpers for main server_loop */
@@ -164,7 +158,6 @@ server_loop(int argc, char *argv[])
 		}
 	}
 }
-
 
 /*
  * get a socket and form a cn_strct around it
@@ -348,13 +341,16 @@ read_request( struct cn_strct *cn )
 #endif
 }
 
-/*
+/* depending on if it is static or dynamic
+ *  - static:  stat(file), send header, prepare for file buffering
+ *  - dynamic: enqueue for thread pool, let it handle everything
  */
 static void
 write_head (struct cn_strct *cn)
 {
 	char       buf[RECV_BUFF_LENGTH];
 	struct     stat stbuf;
+	char      *file_url;
 	int        file_exists;
 	time_t     now = time(NULL);
 	struct tm *tm_struct;
@@ -367,24 +363,18 @@ write_head (struct cn_strct *cn)
 		strftime( _Master_date, 30, "%a, %d %b %Y %H:%M:%S %Z", tm_struct);
 	}
 
-	cn->url++;              /* eat leading slash */
+	file_url = cn->url+1;              /* eat leading slash */
 	/* check if we request a static file */
-	if (0 == strncasecmp(cn->url, FAVICON_URL, FAVICON_URL_LENGTH ) ||
-	    0 == strncasecmp(cn->url, ROBOTS_URL,  ROBOTS_URL_LENGTH )  ||
-	    0 == strncasecmp(cn->url, STATIC_ROOT, STATIC_ROOT_LENGTH )) {
-
-		cn->is_static=true;
-
-		file_exists = stat(cn->url, &stbuf);
+	if (cn->is_static) {
+		file_exists = stat(file_url, &stbuf);
 		if (file_exists == -1) {
 			//send_error(cn, 404);
-			printf("Sorry dude, didn't find the file: %s\n", cn->url);
+			printf("Sorry dude, didn't find the file: %s\n", file_url);
 			remove_conn_from_list(cn);
 			return;
 		}
 
-		cn->file_desc = open(cn->url, O_RDONLY);
-
+		cn->file_desc = open(file_url, O_RDONLY);
 		cn->processed_bytes = (size_t) snprintf(buf, sizeof(buf),
 			HTTP_VERSION" 200 OK\r\n"
 			"Server: %s\r\n"
@@ -393,7 +383,7 @@ write_head (struct cn_strct *cn)
 			"Date: %s\r\n\r\n",
 			//"Last-Modified: %s\r\n",
 			_Server_version,
-			get_mime_type(cn->url),
+			get_mime_type(file_url),
 			(long) stbuf.st_size,
 			_Master_date
 			//ctime(&stbuf.st_mtime)
