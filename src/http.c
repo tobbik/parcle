@@ -27,9 +27,12 @@ parse_first_line( struct cn_strct *cn )
 	char          *next  = cn->data_buf_head;
 	unsigned int   got_get=0, get_cnt=0, slash_cnt=0, error=0;
 	/* METHOD */
-	if (0 == strncasecmp(next, "GET",  3)) { cn->req_type=REQTYPE_GET;  next+=3;}
-	if (0 == strncasecmp(next, "HEAD", 4)) { cn->req_type=REQTYPE_HEAD; next+=4;}
-	if (0 == strncasecmp(next, "POST", 4)) { cn->req_type=REQTYPE_POST; next+=4;}
+	if      (0 == strncasecmp(next, "GET",     3)) { cn->req_type=REQTYPE_GET;     next+=3;}
+	else if (0 == strncasecmp(next, "HEAD",    4)) { cn->req_type=REQTYPE_HEAD;    next+=4;}
+	else if (0 == strncasecmp(next, "POST",    4)) { cn->req_type=REQTYPE_POST;    next+=4;}
+	else if (0 == strncasecmp(next, "OPTIONS", 7)) { cn->req_type=REQTYPE_OPTIONS; next+=7;}
+	else if (0 == strncasecmp(next, "DELETE",  6)) { cn->req_type=REQTYPE_DELETE;  next+=6;}
+	else if (0 == strncasecmp(next, "PUT",     3)) { cn->req_type=REQTYPE_PUT;     next+=3;}
 	*next = '\0';
 	/* URL */
 	next++;
@@ -54,7 +57,7 @@ parse_first_line( struct cn_strct *cn )
 				break;
 			case '?':
 				got_get = 1;
-				cn->pay_load = next+1;
+				cn->get_str = next+1;
 				*next = '\0';
 				break;
 			case '/':
@@ -82,9 +85,14 @@ parse_first_line( struct cn_strct *cn )
 	*next = '\0';
 	next++;
 	/* HTTP protocol version */
-	if (0 == strncasecmp(next, "HTTP/0.9", 8)) { cn->http_prot=HTTP_09; }
-	if (0 == strncasecmp(next, "HTTP/1.0", 8)) { cn->http_prot=HTTP_10; }
-	if (0 == strncasecmp(next, "HTTP/1.1", 8)) { cn->http_prot=HTTP_11; }
+	if (0 == strncasecmp(next, "HTTP/", 5))
+		next+=5;
+	else
+		// error(400, "The HTTP protocol type needs to be specified!");
+		printf("Crying game....\n");
+	if (0 == strncasecmp(next, "0.9", 3)) { cn->http_prot=HTTP_09; }
+	if (0 == strncasecmp(next, "1.0", 3)) { cn->http_prot=HTTP_10; }
+	if (0 == strncasecmp(next, "1.1", 3)) { cn->http_prot=HTTP_11; }
 #if DEBUG_VERBOSE==1
 	printf("URL SLASHES: %d -- GET PARAMTERS: %d --ERRORS: %d\n",
 		slash_cnt, get_cnt, error);

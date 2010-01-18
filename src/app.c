@@ -12,6 +12,7 @@
 #include <string.h>             /* strlen() */
 
 #include "parcle.h"
+#include "wsapi.h"
 
 #include "lua.h"
 #include "lualib.h"
@@ -34,17 +35,19 @@ const struct luaL_reg app_lib [] = {
 void
 *run_app_thread (void *targs)
 {
-	struct thread_arg *args;
-	struct cn_strct *cn;
-	int              sent;
-	char             answer_buf[ANSWER_LENGTH];
+	struct thread_arg   *args;
+	struct cn_strct     *cn;
+	struct request_env  *re;
+	int                  sent;
+	char                 answer_buf[ANSWER_LENGTH];
 
 	args = (struct thread_arg *) targs;
 
 	/* thread local lua state */
 	lua_State *L = lua_open();
-	luaL_openlibs (L);
 	luaL_openlib  (L, "parcle", app_lib, 0);
+	l_register_request(L);
+	luaL_openlibs (L);
 	if (luaL_loadfile(L, "_init.lua") || lua_pcall(L, 0, 0, 0))
 		error(L, "cannot run file: %s", lua_tostring(L, -1));
 
@@ -85,7 +88,11 @@ void
 
 		/* Execute the lua function we want */
 		lua_getglobal(L, "test");
-		lua_pushlightuserdata(L, (void*) cn);
+		re = (struct request_env *) lua_newuserdata(L,
+			sizeof(struct request_env));
+		// luaL_getmetatable(L, "wsapi_request");
+		// lua_setmetatable(L, -2);
+		re->cn = cn;
 		lua_call(L, 1, 0);
 
 		/* signal the select loop that we are done ...*/
@@ -102,12 +109,12 @@ void
 static int
 l_buffer_output (lua_State *L)
 {
-	struct cn_strct *cn  = NULL;
-	cn  =  (struct cn_strct*) lua_touserdata(L, 1);
+	struct request_env *re  = NULL;
+	re  =  (struct request_env*) lua_touserdata(L, 1);
 
-	cn->processed_bytes = lua_strlen (L, 2);
-	strncpy( cn->data_buf_head, lua_tostring (L, 2), cn->processed_bytes );
-	cn->out_buf = cn->data_buf_head;
+	re->cn->processed_bytes = lua_strlen (L, 2);
+	strncpy( re->cn->data_buf_head, lua_tostring (L, 2), re->cn->processed_bytes );
+	re->cn->out_buf = re->cn->data_buf_head;
 
 	return 0;
 }
@@ -115,11 +122,11 @@ l_buffer_output (lua_State *L)
 static int
 l_get_output_buffer (lua_State *L)
 {
-	struct cn_strct *cn  = NULL;
-	cn                   =  (struct cn_strct*) lua_touserdata(L, 1);
+	struct request_env *re  = NULL;
+	re  =  (struct request_env*) lua_touserdata(L, 1);
 
-	cn->processed_bytes  = lua_strlen (L, 2);
-	cn->out_buf = lua_tolstring (L, 2, &cn->processed_bytes);
+	re->cn->processed_bytes  = lua_strlen (L, 2);
+	re->cn->out_buf = lua_tolstring (L, 2, &re->cn->processed_bytes);
 
 	return 0;
 }

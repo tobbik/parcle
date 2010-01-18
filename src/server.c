@@ -217,7 +217,7 @@ add_conn_to_list(int sd, char *ip)
 	tp->req_type         = REQTYPE_GET;
 	tp->processed_bytes  = 0;
 	tp->line_count       = 0;
-	tp->pay_load         = '\0';
+	tp->get_str          = NULL;
 	tp->is_static        = false;
 	tp->url              = NULL;
 }
@@ -336,7 +336,7 @@ read_request( struct cn_strct *cn )
 		printf("METHOD: %d\n",   cn->req_type);
 		printf("URL: %s\n",      cn->url);
 		printf("PROTOCOL: %d\n", cn->http_prot);
-		printf("PAYLOAD: %s\n",  cn->pay_load);
+		printf("GET: %s\n",      cn->get_str);
 	}
 #endif
 }
