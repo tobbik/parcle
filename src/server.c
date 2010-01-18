@@ -201,17 +201,14 @@ add_conn_to_list(int sd, char *ip)
 		memset(tp->data_buf_head, 0, RECV_BUFF_LENGTH * sizeof(char));
 		_Free_count--;
 	}
-	//printf("FREE before done: %d\n", _Free_count);
 
 	/* attach to tail of the _Busy_conns */
 	if (NULL == _Busy_conns) {
-		//printf("ATTACH TO EMPTY BUSY CONNS at %d\n", _Busy_count);
 		tp->c_next          = NULL;
 		tp->c_prev          = NULL;
 		_Busy_conns         = tp;
 	}
 	else {
-		//printf("ATTACH TO BUSY CONNS TAIL at %d\n", _Busy_count);
 		tp->c_next          = _Busy_conns;
 		_Busy_conns->c_prev = tp;
 		_Busy_conns         = tp;
@@ -279,7 +276,6 @@ remove_conn_from_list( struct cn_strct *cn )
 	cn->c_prev          = NULL;
 	_Free_conns         = cn;
 	_Free_count++;
-	// printf("FREE after done: %d\n", _Free_count);
 
 	/* Close it all down */
 	if (cn->net_socket != -1) {
