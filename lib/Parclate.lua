@@ -261,31 +261,37 @@ end
 -- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
 	if v52 then
-		return string.format([[local t,t1={
- format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert,tostring=tostring},{
+		return string.format([[local f={
  format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
-local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
+local t={}
+local c=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
+local i==function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+       else return rawget(f,k) end end
+local n==function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+       else error("<"..k.."> cannot be set on the table" ) end end
 local r=function()
  in t do
 %s
  end
 end
-setmetatable(t,{__tostring=r,__call=f})
+setmetatable(t,{__tostring=r,__call=c,__index=i,__newindex=n})
 return t]], table.concat(compile_chunk(self)) )
 	else
-		return string.format([[local t,t1={
- format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert,tostring=tostring},{
+		return string.format([[local f={
  format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
-local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
+local t={}
+local c=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
+local i=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+       else return rawget(f,k) end end
+local n=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+       else error("<"..k.."> cannot be set on the table" ) end end
 local r=function()
 %s
 end
-setmetatable(t,{__tostring=r,__call=f})
-setfenv(chunk, t)
+setmetatable(t,{__tostring=r,__call=c,__index=i,__newindex=n})
+setfenv(r, t)
 return t]], table.concat(compile_chunk(self)) )
 	end
 end
