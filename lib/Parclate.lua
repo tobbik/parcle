@@ -265,32 +265,25 @@ local to_file = function(self)
  format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
 local t={}
-local c=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
-local i==function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
-       else return rawget(f,k) end end
-local n==function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
-       else error("<"..k.."> cannot be set on the table" ) end end
-local r=function()
- in t do
-%s
- end
-end
-setmetatable(t,{__tostring=r,__call=c,__index=i,__newindex=n})
+setmetatable(t,{__tostring=function() in t do %s end end,
+ __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
+ __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+                       else                      return rawget(f,k) end end,
+ __newindex=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+       else error("<"..k.."> cannot be set on the table" ) end end})
 return t]], table.concat(compile_chunk(self)) )
 	else
 		return string.format([[local f={
  format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
 local t={}
-local c=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
-local i=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
-       else return rawget(f,k) end end
-local n=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
-       else error("<"..k.."> cannot be set on the table" ) end end
-local r=function()
-%s
-end
-setmetatable(t,{__tostring=r,__call=c,__index=i,__newindex=n})
+local r=function() %s end
+setmetatable(t,{__tostring=r,
+ __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
+ __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+                       else                      return rawget(f,k) end end,
+ __newindex=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+       else error("<"..k.."> cannot be set on the table" ) end end})
 setfenv(r, t)
 return t]], table.concat(compile_chunk(self)) )
 	end
