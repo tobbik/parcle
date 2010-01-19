@@ -261,31 +261,30 @@ end
 -- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
 	if v52 then
-		return string.format([[local t,t1={
- format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert,tostring=tostring},{
+		return string.format([[local f={
  format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
-local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
-local r=function()
- in t do
-%s
- end
-end
-setmetatable(t,{__tostring=r,__call=f})
+local t={}
+setmetatable(t,{__tostring=function() in t do %s end end,
+ __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
+ __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+                       else                      return rawget(f,k) end end,
+ __newindex=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+       else error("<"..k.."> cannot be set on the table" ) end end})
 return t]], table.concat(compile_chunk(self)) )
 	else
-		return string.format([[local t,t1={
- format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert,tostring=tostring},{
+		return string.format([[local f={
  format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
-local f=function(s) for k,v in pairs(s) do if not t1[k] then s[k]=nil end end end
-local r=function()
-%s
-end
-setmetatable(t,{__tostring=r,__call=f})
-setfenv(chunk, t)
+local t={}
+local r=function() %s end
+setmetatable(t,{__tostring=r,
+ __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
+ __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+                       else                      return rawget(f,k) end end,
+ __newindex=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+       else error("<"..k.."> cannot be set on the table" ) end end})
+setfenv(r, t)
 return t]], table.concat(compile_chunk(self)) )
 	end
 end
@@ -299,25 +298,43 @@ Parclate.to_file = to_file
                     |_|              --]]
 -- #public: create a table that represents just the compiled template
 local compile = function(self)
-	local t1,t = {
+	-- holds all the protected immutable functions of the template
+	local funcs = {
 		format = string.format, pairs = pairs, ipairs = ipairs,
 		concat = table.concat,  insert = table.insert, tostring = tostring
-	},{ format = string.format, pairs = pairs, ipairs = ipairs,
-		concat = table.concat,  insert = table.insert, tostring = tostring }
-	-- call() the template to delete all assigned values (for reuse)
-	local flush = function(self)
-		for k,v in pairs(self) do
-			if not t1[k] then
-				self[k] = nil
-			end
-		end
-	end
+	}
+	-- the mutable part of the template that holds the values
+	local t = {}
 	-- prepare the compiled chunk (render function)
 	local chunk = (v52) and
 		assert( loadin(t, table.concat(compile_chunk(self)) ))
 		or
 		assert( loadstring(table.concat(compile_chunk(self)) ))
-	setmetatable(t, { __tostring = chunk, __call = flush })
+	setmetatable(t, {
+		__tostring = chunk,
+		-- does flushing it really makes sense?
+		__call     = function(self)
+			for k,v in pairs(self) do
+				if not funcs[k] then
+					self[k] = nil
+				end
+			end
+		end,
+		__index    = function(self,k)
+			if 'nil' ~= type(funcs[k]) then
+				return rawget( funcs, k )
+			else
+				return rawget( self, k )
+			end
+		end,
+		__newindex = function(self, k, v)
+			if 'nil' ~= type(funcs[k]) then
+				error("<"..k.."> cannot be set on the table" )
+			else
+				rawset( self, k, v )
+			end
+		end
+	})
 	if not v52 then setfenv(chunk, t) end
 	return t
 end
