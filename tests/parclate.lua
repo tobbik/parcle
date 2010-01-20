@@ -104,9 +104,8 @@ print(b)
 
 local docsample = [[
 	<ol l:if="show_links_section">
-		<!-- A comment, included as string element -->
-		<li l:for="name,link in pairs(links)" class="link_list">
-			<a href="${link.url}">${name}</a> posted by ${link.username}
+		<li l:for="i,link in ipairs(links)" l:attrs="{class=(i%2==1) and 'even' or 'odd'}">
+			<a l:attrs="{href=link.url}">${link.name}</a> posted by ${link.username}
 		</li>
 	</ol>
 ]]
@@ -118,9 +117,9 @@ print(dsr:to_file())
 
 dst.show_links_section = true
 dst.links              = {
-	Parcle    = {username='Parclicator',     url='http://parcle.com'},
-	Google    = {username='Probiwan Kenobi', url='http://google.ca'},
-	Design    = {username='Cool Stuff',      url='http://maxdesign.com.au'},
-	Knowledge = {username='Smart Cookie',    url='http://ajaxinan.com'}
+	{name='Parcle',    username='Parclicator',     url='http://parcle.com'},
+	{name='Google',    username='Probiwan Kenobi', url='http://google.ca'},
+	{name='Design',    username='Cool Stuff',      url='http://maxdesign.com.au'},
+	{name='Knowledge', username='Smart Cookie',    url='http://ajaxinan.com'}
 }
 print(dst)
