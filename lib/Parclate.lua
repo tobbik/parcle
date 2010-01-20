@@ -168,7 +168,7 @@ local compile_command_end = function(cmd, c_buf)
 	end
 end
 
--- #private: combine the last set of continous strings into one chunk
+-- #private: combine the last set of adjacent strings into one chunk
 local compile_buffer = function(c_buf, buffer, f_args, cnt)
 	if 0==#buffer and 0==#f_args then return cnt end
 	if 0 == #f_args then
@@ -182,9 +182,9 @@ local compile_buffer = function(c_buf, buffer, f_args, cnt)
 			']],'.. table.concat(f_args, ',') ..'))\n'
 		)
 		-- f_args={} creates a new reference, table.remove preserves it
-		for _=1,#f_args do table.remove(f_args) end
+		while #f_args>0 do table.remove(f_args) end
 	end
-	for _=1,#buffer do table.remove(buffer) end
+	while #buffer>0 do table.remove(buffer) end
 	return cnt+1
 end
 
