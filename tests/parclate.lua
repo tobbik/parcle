@@ -101,10 +101,10 @@ b.nestedloop = a
 b.char       = string.char     -- string char is not known in templates env
 print(b)
 
-
 local docsample = [[
 	<ol l:if="show_links_section">
-		<li l:for="i,link in ipairs(links)" l:attrs="{class=(i%2==1) and 'even' or 'odd'}">
+		<li l:for="i,link in ipairs(links)" style="color:red"
+		  l:attrs="{class=(i%2==1) and 'even' or 'odd'}">
 			<a l:attrs="{href=link.url}">${link.name}</a> posted by ${link.username}
 		</li>
 	</ol>

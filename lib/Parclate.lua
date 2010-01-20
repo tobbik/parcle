@@ -209,6 +209,14 @@ local compile_chunk = function (r)
 					table.insert(buffer, string.format(' %s="%s"', k, v))
 				end
 			end
+			if t.cmd and t.cmd.attrs then
+				chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
+				table.insert(c_buf, string.format(
+					"\tfor _at,_atv in pairs(%s) do\n" ..
+						"\t\tinsert(x, format([=[ %%s=\"%%s\"]=], _at, _atv))\n" ..
+					"\tend", t.cmd.attrs))
+				chunk_cnt = chunk_cnt+1
+			end
 			table.insert(buffer, t.empty and ' />' or '>')
 		end
 		if t.empty then
