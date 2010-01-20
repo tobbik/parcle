@@ -101,3 +101,26 @@ b.nestedloop = a
 b.char       = string.char     -- string char is not known in templates env
 print(b)
 
+
+local docsample = [[
+	<ol l:if="show_links_section">
+		<!-- A comment, included as string element -->
+		<li l:for="name,link in pairs(links)" class="link_list">
+			<a href="${link.url}">${name}</a> posted by ${link.username}
+		</li>
+	</ol>
+]]
+local dsr  = Parclate(docsample)    -- gen tmpl representation from xml string
+local dst  = dsr()                  -- gen tmpl representation from xml string
+
+print(dsr:debug())
+print(dsr:to_file())
+
+dst.show_links_section = true
+dst.links              = {
+	Parcle    = {username='Parclicator',     url='http://parcle.com'},
+	Google    = {username='Probiwan Kenobi', url='http://google.ca'},
+	Design    = {username='Cool Stuff',      url='http://maxdesign.com.au'},
+	Knowledge = {username='Smart Cookie',    url='http://ajaxinan.com'}
+}
+print(dst)

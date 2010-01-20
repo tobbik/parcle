@@ -87,62 +87,6 @@ different but related purposes:
      dynamically in steps of the of x^2 to avoid reallocations.
 
 
-==============================
-About templating (Parclate)
-==============================
-
-XML vs non-XML vs HTML(5)
--------------------------
-
-Okay, this one sucks. Reading implementations, arguments and papers and working
-with either kind of templating system left me undecided for a long time. But
-like with everything sooner or later I came up with a compromise that works for
-me. The overall impression I have is that it seems to be easier to work with
-templating systems that do incorporate some sort of xml/html tags. There is no
-real technical reason for that in my opinion because a programmer and even a
-designer might be able to wrap his or her mind around any WELL DOCUMENTED
-implementation. However, the majority of us grew up with html, php and the like
-and I have to admit, that neither mako nor haml ever came natural to me because
-like anybody else I'm a creature of habit. Moreover, xml and html being
-relatives, makes xml a natural choice for an html targeted templating language.
-Now, that being said, if you wanna accomplish anything else other than html, a
-more generic templating language type such as mako probably is the better
-choice.
-
-The design of Parclate
-----------------------
-
-Parclate is XML based and the XML tags get parsed out properly. Parclate will
-complain about unclosed tags and to a certain extend about not well foremd xml.
-However, there is no DTD parsing or validation involved. That means beyond the
-requirement of properly parsed xml you can do whatever you want in Parclate,
-even if it is totally butchered html. It also means, that tags must be closed
-properly just like you would do that in xhtml (think of <br /> instead of <br>,
-and no lingering open <li> would be allowed either).
-
-That being said, Parclate will NOT do the formatting for you. Parclates parser
-instead tries to preserve the formatting in the template to the best of it's
-abilities. There is one notably exception here: long tags with line breaks in
-the template will be serialized onto one long line. Also the order of serialized
-attributes IS arbitrary. There is no rule in HTML that would enforce order
-anyway.
-
-Serialization in parclate is implemented as a concatenating lua function. When a
-template gets serialized, Parclate creates string chunks that are as long as
-possible. This flow will only be interrupted by variable substitution or other
-template functionality such as conditions or loops. The result of parclates
-rendering is a string buffer.
-
-Future Ideas
-------------------------
-
-There is no good technical reason to have only XML as starting point. As long as
-there is a parser that can transform some markup into Parclates DOM table
-structure, we could utilize whatever we want. May a language like Djangos or
-makos markup could provide a more generic way to create freeform text templates
-that then could be used to create Emails, dynamically generated JavaScript files
-or whatever we need.
-
 =============================
 Utilized or bundled Libraries
 =============================

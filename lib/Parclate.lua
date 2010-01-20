@@ -360,7 +360,7 @@ print_r = function( self, indent, done )
 			table.insert(cl, indent .. "}" .. '\n')
 		else
 			table.insert(cl,
-				indent .. "[" .. tostring (key) .. "] => _" .. tostring (value).."_\n"
+				indent .. "[" .. tostring (key) .. "] => \"" .. tostring (value).."\"\n"
 			)
 		end
 	end
