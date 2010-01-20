@@ -269,7 +269,7 @@ setmetatable(t,{__tostring=function() in t do %s end end,
  __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
  __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
                        else                      return rawget(f,k) end end,
- __newindex=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+ __newindex=function(s,k,v) if 'nil'==type(f[k]) then rawset(s,k,v)
        else error("<"..k.."> cannot be set on the table" ) end end})
 return t]], table.concat(compile_chunk(self)) )
 	else
@@ -282,7 +282,7 @@ setmetatable(t,{__tostring=r,
  __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
  __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
                        else                      return rawget(f,k) end end,
- __newindex=function(s,k,v) if 'nil'=type(f[k]) then rawset(s,k,v)
+ __newindex=function(s,k,v) if 'nil'==type(f[k]) then rawset(s,k,v)
        else error("<"..k.."> cannot be set on the table" ) end end})
 setfenv(r, t)
 return t]], table.concat(compile_chunk(self)) )
