@@ -143,7 +143,7 @@ Parclate.serialize = serialize
 | || (_) | |  _| | |  __/
  \__\___/  |_| |_|_|\___|--]]
 -- #private: create lua function source code from the arguments
-local dispatch_command = function(cmd, c_buf)
+local compile_command = function(cmd, c_buf)
 	local strip =false
 	for c,exp in pairs(cmd) do
 		if 'if' == c then
@@ -160,7 +160,7 @@ local dispatch_command = function(cmd, c_buf)
 end
 
 -- #private: helper to close open functions in the compiled chunk
-local dispatch_command_end = function(cmd, c_buf)
+local compile_command_end = function(cmd, c_buf)
 	for c,_ in pairs(cmd) do
 		if 'if' == c or 'for' == c then
 			table.insert(c_buf, '\tend\n')
@@ -200,7 +200,7 @@ local compile_chunk = function (r)
 		local strip = false
 		if t.cmd then
 			chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
-			strip = dispatch_command(t.cmd, c_buf)
+			strip = compile_command(t.cmd, c_buf)
 		end
 		if t.tag and not strip then
 			table.insert(buffer, string.format('<%s', t.tag))
@@ -213,7 +213,7 @@ local compile_chunk = function (r)
 		end
 		if t.empty then
 			if t.cmd then
-				dispatch_command_end(t.cmd, c_buf)
+				compile_command_end(t.cmd, c_buf)
 			end
 			return
 		end
@@ -237,7 +237,7 @@ local compile_chunk = function (r)
 		end
 		if t.cmd then
 			chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
-			dispatch_command_end(t.cmd, c_buf)
+			compile_command_end(t.cmd, c_buf)
 		end
 		return
 	end
