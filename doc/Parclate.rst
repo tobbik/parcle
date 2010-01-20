@@ -66,8 +66,9 @@ This is a standard html styled snipped.::
 
 	<ol l:if="show_links_section">
 		<!-- A comment, included as string element -->
-		<li l:for="name,link in pairs(links)" class="link_list">
-			<a href="${link.url}">${name}</a> posted by ${link.username}
+		<li l:for="i,link in ipairs(links)" style="color:red"
+		  l:attrs="{class=(i%2==1) and 'even' or 'odd'}">
+			<a l:attrs="{href=link.url}">${link.name}</a> posted by ${link.username}
 		</li>
 	</ol>
 
@@ -82,67 +83,80 @@ be able to also represent a more textbased approach quite easily. It really
 comes down to the parser. We could utilize a Cheetah like language for that. On
 every value the main decision to make is if it is a string (concatenate to
 adjacent string) or is it a table (parse the actual "string keys", then the
-numeric indexed stuff, repeat recursively).::
+numeric indexed stuff, repeat recursively). ::
 
-    [1] => "	"
+    [1] => '	'
     [2] => {
-       [1] => "
+       [1] => '
     		<!-- A comment, included as string element -->
-    		"
+    		'
        [2] => {
-          [1] => "
-    			"
+          [1] => '
+    			'
           [2] => {
-             [1] => "${name}"
-             [arg] => {
-                  [href] => "${link.url}"
+             [cmd] => {
+                  [attrs] => '{href=link.url}'
              }
-             [empty] => "false"
-             [tag] => "a"
+             [empty] => 'false'
+             [1] => '${link.name}'
+             [tag] => 'a'
           }
-          [3] => " posted by ${link.username}
-    		"
+          [3] => ' posted by ${link.username}
+    		'
           [cmd] => {
-             [for] => "name,link in pairs(links)"
+             [for] => 'i,link in ipairs(links)'
+             [attrs] => '{class=(i%2==1) and 'even' or 'odd'}'
           }
-          [empty] => "false"
+          [empty] => 'false'
           [arg] => {
-             [class] => "link_list"
+             [style] => 'color:red'
           }
-          [tag] => "li"
+          [tag] => 'li'
        }
        [cmd] => {
-          [if] => "show_links_section"
+          [if] => 'show_links_section'
        }
-       [empty] => "false"
-       [3] => "
-    	"
-       [tag] => "ol"
+       [empty] => 'false'
+       [3] => '
+    	'
+       [tag] => 'ol'
     }
 
-Compiled code (crucial render part only:
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Compiled code (crucial render part only):
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is actually enclosed in some protective environment (aka. sandbox). Also
 the table x is prefilled with a bunch of empty elements to avoid rehashing
 especially in the low numbers (We honour that lua rehashes by 2^x). 'insert',
-'format' and co are predefined shortcuts to string.format etc the environment.::
+'format' and co are predefined shortcuts to string.format etc the environment.
+Also, the automatically generated code is not quite as pretty formatted as
+displayed here of cause. ::
 
-    local x={''}
-    insert(x,[[	]])
-    	if show_links_section then
-    		 insert(x,[[<ol>
-    		<!-- A comment, included as string element -->
-    		]])
-    	for name,link in pairs(links) do
-    		 insert(x, format([[<li class="link_list">
-    			<a href="${link.url}">%s</a> posted by %s
-    		</li>]],name,link.username))
-    	end
-    insert(x,[[
-    	</ol>]])
-    	end
-    return concat(x)
+	local x={''}
+	insert(x,[[	]])
+	if show_links_section then
+		insert(x,[[<ol>
+			<!-- A comment, included as string element -->
+			]])
+		for i,link in ipairs(links) do
+			insert(x,[[<li style='color:red']])
+			for _at,_atv in pairs({class=(i%2==1) and 'even' or 'odd'}) do
+				insert(x, format([=[ %s='%s']=], _at, _atv))
+			end
+			insert(x,[[>
+				]])
+			insert(x,[[<a]])
+			for _at,_atv in pairs({href=link.url}) do
+				insert(x, format([=[ %s='%s']=], _at, _atv))
+			end
+			insert(x, format([[>%s</a>]],link.name))
+			insert(x, format([[ posted by %s
+			</li>]],link.username))
+		end
+		insert(x,[[
+		</ol>]])
+	end
+	return concat(x,'')
 
 Sample data applied:
 ~~~~~~~~~~~~~~~~~~~~
@@ -172,18 +186,17 @@ Generated output as by tostring(t):
 The trailing Whitespace is not honoured. That is a known issue and mostly of
 asthetic nature.::
 
-    <ol>
-    	<!-- A comment, included as string element -->
-    	<li class="link_list">
-    		<a href="${link.url}">Google</a> posted by Probiwan Kenobi
-    	</li><li class="link_list">
-    		<a href="${link.url}">Parcle</a> posted by Parclicator
-    	</li><li class="link_list">
-    		<a href="${link.url}">Design</a> posted by Cool Stuff
-    	</li><li class="link_list">
-    		<a href="${link.url}">Knowledge</a> posted by Smart Cookie
-    	</li>	</ol>
-
+	<ol>
+		<!-- A comment, included as string element -->
+		<li style='color:red' class='even'>
+			<a href='http://parcle.com'>Parcle</a> posted by Parclicator
+		</li><li style='color:red' class='odd'>
+			<a href='http://google.ca'>Google</a> posted by Probiwan Kenobi
+		</li><li style='color:red' class='even'>
+			<a href='http://maxdesign.com.au'>Design</a> posted by Cool Stuff
+		</li><li style='color:red' class='odd'>
+			<a href='http://ajaxinan.com'>Knowledge</a> posted by Smart Cookie
+		</li>	</ol>
 
 Future Ideas
 ------------
