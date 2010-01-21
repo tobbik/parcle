@@ -110,6 +110,10 @@ local serialize = function (self)
 					table.insert(cl, string.format(' %s="%s"', k, v))
 				end
 			end
+			if t.strip then table.insert(cl, ' l:strip=""') end
+			if t.attrs then
+				table.insert(cl, string.format(' l:attrs="%s"', t.attrs))
+			end
 			if t.cmd then
 				for c,e in pairs(t.cmd) do
 					table.insert(cl, string.format(' l:%s="%s"', c, e))
