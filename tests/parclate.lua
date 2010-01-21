@@ -114,6 +114,7 @@ local dsr  = Parclate(docsample)    -- gen tmpl representation from xml string
 local dst  = dsr()                  -- gen tmpl representation from xml string
 
 print(dsr:debug())
+print(dsr:serialize())
 print(dsr:to_file())
 
 dst.show_links_section = true
