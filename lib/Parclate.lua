@@ -269,10 +269,9 @@ end
 -- #public: generate the string for a file which is a compiled template
 local to_file = function(self)
 	if v52 then
-		return string.format([[local f={
- format=string.format,pairs=pairs,ipairs=ipairs,
+		return string.format(
+		[[local t,f={},{format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
-local t={}
 setmetatable(t,{__tostring=function() in t do %s end end,
  __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
  __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
@@ -281,10 +280,9 @@ setmetatable(t,{__tostring=function() in t do %s end end,
        else error("<"..k.."> cannot be set on the table" ) end end})
 return t]], table.concat(compile_chunk(self)) )
 	else
-		return string.format([[local f={
- format=string.format,pairs=pairs,ipairs=ipairs,
+		return string.format(
+		[[local t,f={},{format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
-local t={}
 local r=function() %s end
 setmetatable(t,{__tostring=r,
  __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
