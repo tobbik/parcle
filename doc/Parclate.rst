@@ -32,25 +32,25 @@ XML vs non-XML vs HTML(5)
 -------------------------
 
 Okay, this one sucks. Reading implementations, arguments and papers and working
-with either kind of templating system left me undecided for a long time. But
-like with everything sooner or later I came up with a compromise that works for
-me and hopefully for others as well. The overall impression I have is that it
-seems to be easier to work with templating systems that do incorporate some sort
-of xml/html tags. There is no real technical reason for that in my opinion
-because a programmer and even a designer might be able to wrap his or her mind
-around any WELL DOCUMENTED implementation. However, the majority of us grew up
-with html, php and the like and I have to admit, that neither mako nor haml ever
-came natural to me because like anybody else I'm a creature of habit. Moreover,
-xml and html being relatives, makes xml a natural choice for an html targeted
-templating language. Now, that being said, if you wanna accomplish anything
-else other than html, a more generic templating language type such as mako
-probably is the better choice. Also I found when working together with designers
-on a project it is easier to have an html like templating language as a least
-common denominator. Now, all that being said, Parlates core is a Lua table
+with either kind of template system left me undecided for a long time. But like
+with everything sooner or later I came up with a compromise that works for me
+and hopefully for others as well. The overall impression I have is that it seems
+to be easier to work with template systems that do incorporate some sort of
+xml/html tags. There is no real technical reason for that in my opinion because
+a programmer and even a designer might be able to wrap his or her mind around
+any WELL DOCUMENTED implementation. However, the majority of us grew up with
+html, php and the like and I have to admit, that neither mako nor haml ever came
+natural to me because like anybody else I'm a creature of habit. Moreover, xml
+and html being relatives, makes xml a natural choice for an html targeted
+template language. Now, that being said, if you wanna accomplish anything else
+other than html, a more generic template language type such as mako probably is
+the better choice. Also I found when working together with designers on a
+project it is easier to have an html like template language as a least common
+denominator. Now, all that being said, Parlates core is a Lua table
 representation of a DOM. This DOM could as well be generated from another
 templating language such as Cheetah, which is rather text based. It is on the
 agenda to write something like that. It could be used to generate emails,
-dynamically benerated JavaScript.
+dynamically generated JavaScript.
 
 
 Internals -> DOM structure -> compiled code
@@ -75,11 +75,11 @@ This is a standard html styled snipped.::
 tt:serialize() shall create a semantically equivalent string from a parsed
 representation.
 
-DOM structure (note, template whitespace are part f othe chunks):
+DOM structure (note, template whitespace are part of the chunks):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This representation is catered towards to the XML approach, which why it shall
-be able to also represent a more textbased approach quite easily. It really
+be able to also represent a more text-based approach quite easily. It really
 comes down to the parser. We could utilize a Cheetah like language for that. On
 every value the main decision to make is if it is a string (concatenate to
 adjacent string) or is it a table (parse the actual "string keys", then the
@@ -179,7 +179,7 @@ And here we fill our values in:::
 Generated output as by tostring(t):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The trailing Whitespace is not honoured. That is a known issue and mostly of
+The trailing white space is not honoured. That is a known issue and mostly of
 asthetic nature.::
 
 	<ol>
@@ -199,8 +199,116 @@ Future Ideas
 
 Basically, kids attr command, some sort of template inheritance shall be done as
 part of the basic functionality. Parclate already includes a "compile to_file"
-functionality -> there shall be a convienience wrapper that can allows for easy
+functionality -> there shall be a convenience wrapper that can allows for easy
 bulk compilation and access of compiled templates. Probably directory based.
+
+Usage
+-----
+
+Invoking Parclate is a two step process. The first step is always the parsing.
+Parclate is like a class. Very much like in Python, consider calling it to be
+it's constructor. Here are the major steps::
+
+    -- construct the compiled template however you like
+    t  = Parclate(t_string)      -- creates a parsed template object
+    tc = t:compile()             -- tc is a compiled template
+    tc = t()                     -- same -> convenience shortcut
+    tc = Parclate(t_string)()    -- can be done in one step
+
+    -- fill the variables in the template
+    tc.a=1                       -- some example variables
+    tc.b={k='name',x='place'}
+    print(tc)                    -- print() runs the tostring() method
+    tc()                         -- executing it sets all variables to nil
+    print(tc)                    -- FAIL! because nil can't be concatenated
+
+A parsed template like 'tc' in the example above has the following methods which
+can be used for debugging and other things::
+
+    t=Parclate(t_string) -- creates a parsed template object
+    t:serialize()        -- returns the to XML, semantically identical to
+                         -- 't_string'
+    t:debug()            -- pretty prints the internal representation
+    t:to_file()          -- returns a string that contains lua code which can
+                         -- be saved to file and require() from there, contains
+                         -- compiled template
+
+A compiled template has only very few commands on it. Basically just the __call
+and the __tostring metamethods are hooked up::
+
+    tc=Parclate(t_string)() -- creates a compiled template object
+    tc.x=y                  -- assign variable ${x}
+    tostring(tc)            -- returns the rendered template as string
+    tc()                    -- flushes all variables like tc.x==nil
+
+Schematic use cases in web frameworks and CGI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When using Parclate it is important to initialize, parse and compile the
+templates on startup time of the application so it happens only once. The
+compiled template will be used over and over again.That is relatively simple.
+Assume a application like most application for WSAPI or Orbit. The following
+works on a high level and must be tweaked to apply to actual frameworks.::
+
+    -- self explanatory, make sure the path finds it
+    Parclate = require('Parclate')
+
+    -- Parclate(x) parses it, calling it runs compile()
+    local t1 = Parclate(string_containing_template)()
+
+    -- that gets called when the client hits a routed url
+    local return_index_page =  function(web_object)
+        -- do things with web_object, call db etc, define variables
+
+        -- now fill the template, depending on template structure, the variables
+        -- can be literals, tables or even functions
+        t1.var1=x
+        t1.var2=y
+        t1.var3=z
+
+        -- tostring(t1) renders the template into a string
+        return tostring(t1)
+    end
+
+The above code assumes that the code is loaded for the runtime of the server
+(aka. NOT like a CGI script). Then the compiled template stays in memory and can
+run over and over again. Compiled templates are optimized for speed and rather
+low memory consumption. If you need to use CGI scripts that get loaded over and
+over again, Parclate has the to_file option, which is yet not completely usable
+in a convienient way. Consider the following code, which is NOT part of your CGI
+script::
+
+    Parclate = require('Parclate')
+
+    -- Parclate(x) parses it, DO NOT COMPILE IT
+    local t2 = Parclate(string_containing_template)
+
+    -- fc will contain a string that when saved in a file provides the same
+    -- functionality as a compiled
+    local f=io.open('c_template.lua','w')
+    f:write( t2.to_file() )
+    f:close()
+
+This will leave a compiled Parclate template on your hard drive, which is simply
+a .lua file that can be loaded by require(). That can now be used in a CGI
+script since it is easily and quickly loaded::
+
+    -- just require the compiled template and you are done
+    local t1 = require('c_template')
+
+    -- that gets called when the client hits a routed url
+    local run =  function(web_object)
+        -- do things with web_object, call db etc, define variables
+
+        -- now fill the template, depending on template structure, the variables
+        -- can be literals, tables or even functions
+        t1.var1=x
+        t1.var2=y
+        t1.var3=z
+
+        -- tostring(t1) renders the template into a string
+        return tostring(t1)
+    end
 
 
 # vim: ts=4 sw=4 st=4 sta tw=80 ft=rest
