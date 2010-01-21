@@ -190,11 +190,11 @@ end
 -- #private: renders just the chunk, that actully flushes the template
 -- @return: table, that needs to be table.concat()
 local compile_chunk = function (r)
-	local c_buf  = {}
-	local buffer = {}
-	local f_args = {}
-	local chunk_cnt = 0
-	local c_tag         -- predeclare local for recursive calls
+	local c_buf  = {}    -- buffer that holds entire chunk
+	local buffer = {}    -- buffer that holds last set of adjacent string
+	local f_args = {}    -- holds the string.format arguments for "buffer"
+	local chunk_cnt = 0  -- helps to determine initial length of buffer table
+	local c_tag          -- predeclare local for recursive calls
 	c_tag = function(t)
 		if t.cmd then
 			chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
@@ -212,7 +212,7 @@ local compile_chunk = function (r)
 				table.insert(c_buf, string.format(
 					"\tfor _at,_atv in pairs(%s) do\n" ..
 						"\t\tinsert(x, format([=[ %%s=\"%%s\"]=], _at, _atv))\n" ..
-					"\tend", t.attrs))
+					"\tend\n", t.attrs))
 				chunk_cnt = chunk_cnt+1
 			end
 			table.insert(buffer, t.empty and ' />' or '>')
