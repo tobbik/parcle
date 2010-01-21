@@ -22,29 +22,30 @@ local Parclate = {}
 |_|  --]]
 -- helper to disect arguments of tags
 local parse_args = function ( s, tag, empty )
-	local args     = {}
-	local cmds     = {}
-	local haveargs = false
-	local havecmds = false
+	local args   = {}
+	local cmds   = {}
+	local tag_t  = {tag=tag, empty=empty}
 	string.gsub(s, '([^%s="]+)=(["\'])(.-)%2', function (w, _, a)
 		local ns,cmd = string.match(w,'^(l):(%w+)')
 		if ns and cmd then
-			havecmds  = true
-			cmds[cmd] = a
+			if     'strip' == cmd then
+				tag_t['strip'] = true
+			elseif 'attrs' == cmd then
+				tag_t['attrs'] = a
+			else
+				cmds[cmd] = a
+			end
 		else
-			haveargs  = true
 			args[w]   = a
 		end
 	end)
-	if havecmds and haveargs then
-		return {tag=tag, arg=args, cmd=cmds, empty=empty}
-	elseif havecmds then
-		return {tag=tag, cmd=cmds, empty=empty}
-	elseif haveargs then
-		return {tag=tag, arg=args, empty=empty}
-	else
-		return {tag=tag, empty=empty}
+	if next(cmds) then
+		tag_t['cmd'] = cmds
 	end
+	if next(args) then
+		tag_t['arg'] = args
+	end
+	return tag_t
 end
 
 -- Do the actual parsing aka. xml->table conversion
@@ -144,19 +145,13 @@ Parclate.serialize = serialize
  \__\___/  |_| |_|_|\___|--]]
 -- #private: create lua function source code from the arguments
 local compile_command = function(cmd, c_buf)
-	local strip =false
 	for c,exp in pairs(cmd) do
 		if 'if' == c then
 			table.insert(c_buf, string.format('\tif %s then\n\t\t', exp) )
-		end
-		if 'for' == c then
+		elseif 'for' == c then
 			table.insert(c_buf, string.format('\tfor %s do\n\t\t', exp) )
 		end
-		if 'strip' == c then
-			strip = true
-		end
 	end
-	return strip
 end
 
 -- #private: helper to close open functions in the compiled chunk
@@ -197,24 +192,23 @@ local compile_chunk = function (r)
 	local chunk_cnt = 0
 	local c_tag         -- predeclare local for recursive calls
 	c_tag = function(t)
-		local strip = false
 		if t.cmd then
 			chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
-			strip = compile_command(t.cmd, c_buf)
+			compile_command(t.cmd, c_buf)
 		end
-		if t.tag and not strip then
+		if t.tag and not t.strip then
 			table.insert(buffer, string.format('<%s', t.tag))
 			if t.arg then
 				for k,v in pairs(t.arg) do
 					table.insert(buffer, string.format(' %s="%s"', k, v))
 				end
 			end
-			if t.cmd and t.cmd.attrs then
+			if t.attrs then
 				chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
 				table.insert(c_buf, string.format(
 					"\tfor _at,_atv in pairs(%s) do\n" ..
 						"\t\tinsert(x, format([=[ %%s=\"%%s\"]=], _at, _atv))\n" ..
-					"\tend", t.cmd.attrs))
+					"\tend", t.attrs))
 				chunk_cnt = chunk_cnt+1
 			end
 			table.insert(buffer, t.empty and ' />' or '>')
@@ -240,7 +234,7 @@ local compile_chunk = function (r)
 			end
 		end
 		-- close tag
-		if t.tag and not strip then
+		if t.tag and not t.strip then
 			table.insert(buffer, string.format('</%s>', t.tag))
 		end
 		if t.cmd then

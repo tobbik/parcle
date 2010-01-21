@@ -91,26 +91,24 @@ numeric indexed stuff, repeat recursively). ::
     		<!-- A comment, included as string element -->
     		'
        [2] => {
-          [1] => '
-    			'
+          [cmd] => {
+               [for] => 'i,link in ipairs(links)'
+          }
           [2] => {
-             [cmd] => {
-                  [attrs] => '{href=link.url}'
-             }
-             [empty] => 'false'
-             [1] => '${link.name}'
-             [tag] => 'a'
+               [attrs] => '{href=link.url}'
+               [empty] => 'false'
+               [1] => '${link.name}'
+               [tag] => 'a'
+          }
+          [arg] => {
+               [style] => 'color:red'
           }
           [3] => ' posted by ${link.username}
     		'
-          [cmd] => {
-             [for] => 'i,link in ipairs(links)'
-             [attrs] => '{class=(i%2==1) and 'even' or 'odd'}'
-          }
+          [1] => '
+    			'
           [empty] => 'false'
-          [arg] => {
-             [style] => 'color:red'
-          }
+          [attrs] => '{class=(i%2==1) and 'even' or 'odd'}'
           [tag] => 'li'
        }
        [cmd] => {
@@ -132,31 +130,29 @@ especially in the low numbers (We honour that lua rehashes by 2^x). 'insert',
 Also, the automatically generated code is not quite as pretty formatted as
 displayed here of cause. ::
 
-	local x={''}
-	insert(x,[[	]])
-	if show_links_section then
-		insert(x,[[<ol>
-			<!-- A comment, included as string element -->
-			]])
-		for i,link in ipairs(links) do
-			insert(x,[[<li style='color:red']])
-			for _at,_atv in pairs({class=(i%2==1) and 'even' or 'odd'}) do
-				insert(x, format([=[ %s='%s']=], _at, _atv))
-			end
-			insert(x,[[>
-				]])
-			insert(x,[[<a]])
-			for _at,_atv in pairs({href=link.url}) do
-				insert(x, format([=[ %s='%s']=], _at, _atv))
-			end
-			insert(x, format([[>%s</a>]],link.name))
-			insert(x, format([[ posted by %s
-			</li>]],link.username))
-		end
-		insert(x,[[
-		</ol>]])
-	end
-	return concat(x,'')
+    local x={'','','','','','','','','','','','','','','','',''}
+    insert(x,[[	]])
+    if show_links_section then
+    	insert(x,[[<ol>
+    	<!-- A comment, included as string element -->
+    	]])
+    	for i,link in ipairs(links) do
+    		insert(x,[[<li style='color:red']])
+    		for _at,_atv in pairs({class=(i%2==1) and 'even' or 'odd'}) do
+    			insert(x, format([=[ %s='%s']=], _at, _atv))
+    		end
+    		insert(x,[[>
+    		<a]])
+    		for _at,_atv in pairs({href=link.url}) do
+    			insert(x, format([=[ %s='%s']=], _at, _atv))
+    		end
+    		insert(x, format([[>%s</a> posted by %s
+    	</li>]],link.name,link.username))
+    	end
+    	insert(x,[[
+    </ol>]])
+    end
+    return concat(x,'') end
 
 Sample data applied:
 ~~~~~~~~~~~~~~~~~~~~
