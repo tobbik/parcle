@@ -122,7 +122,8 @@ local serialize = function (self)
 			table.insert(cl, t.empty and ' />' or '>')
 			if t.empty then return end
 		end
-		for k,v in ipairs(t) do
+		for i=1,#t do
+			local v=t[i]
 			if 'table' == type(v) then
 				s_tag(v)
 			elseif 'string' == type(v) then
@@ -223,7 +224,8 @@ local compile_chunk = function (r)
 			end
 			return
 		end
-		for k,v in ipairs(t) do
+		for i=1,#t do
+			local v=t[i]
 			if 'table' == type(v) then
 				c_tag(v)
 			elseif 'string' == type(v) then
