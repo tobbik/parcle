@@ -2,18 +2,12 @@
 local string = require( 'string' )
 local table  = require( 'table'  )
 
-local pairs        = pairs
-local setmetatable = setmetatable
-local tostring     = tostring
-local type         = type
-local unpack       = unpack
+local pairs, setmetatable, tostring, type , unpack =
+      pairs, setmetatable, tostring, type , unpack
 
 -- determine version
 -- We use that to determine if "setfenv" or "in env do"
 local v52 = (_VERSION=='Lua 5.2') and true or false
-
--- implementation
-local Parclate = {}
 
 --[[_   __ _ _ __ ___  ___
 | '_ \ / _` | '__/ __|/ _ \
@@ -141,7 +135,6 @@ local serialize = function (self)
 	s_tag(self)
 	return table.concat(cl,'')
 end
-Parclate.serialize = serialize
 
 --[[         __ _ _
 | |_ ___    / _(_) | ___
@@ -294,7 +287,6 @@ setfenv(r, t)
 return t]], table.concat(compile_chunk(self)) )
 	end
 end
-Parclate.to_file = to_file
 
 --[[                       _ _
   ___ ___  _ __ ___  _ __ (_) | ___
@@ -344,7 +336,6 @@ local compile = function(self)
 	if not v52 then setfenv(chunk, t) end
 	return t
 end
-Parclate.compile = compile
 
 -- THE EXTRA's
 -- a pretty printer, helps to see errors in the table representation
@@ -372,11 +363,15 @@ print_r = function( self, indent, done )
 	end
 	return table.concat(cl, '')
 end
-Parclate.debug = print_r
 
 -- THE CLASS STUFF
--- setup constructor Parclate() and __tostring method
-setmetatable(Parclate, {
+-- setup constructor ...() and __tostring method
+return setmetatable({
+			serialize = serialize,
+			to_file   = to_file,
+			compile   = compile,
+			debug     = print_r
+		}, {
 	-- constructor
 	__call = function( self, s )
 		if type(s) ~= 'string' then
@@ -395,5 +390,4 @@ setmetatable(Parclate, {
 	end
 })
 
-return Parclate
 -- vim: ts=4 sw=4 sts=4 sta tw=80 list
