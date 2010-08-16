@@ -277,16 +277,14 @@ return setmetatable({}, {
 		return string.format(
 [[local t,f={},{format=string.format,pairs=pairs,ipairs=ipairs,
  concat=table.concat,insert=table.insert,tostring=tostring}
-local r=function() %s end
-setmetatable(t,{
- __tostring=r,
+return setmetatable(t,{
+ __tostring=setfenv(function() %s end,t),
  __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
  __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
                        else                      return rawget(f,k) end end,
  __newindex=function(s,k,v) if 'nil'==type(f[k]) then rawset(s,k,v)
-       else error("<"..k.."> cannot be set on the table" ) end end})
-setfenv(r, t)
-return t]], table.concat(compile_chunk(self)) )
+       else error("<"..k.."> cannot be set on the table" ) end end})]],
+	table.concat(compile_chunk(self)) )
 	end
 end
 
