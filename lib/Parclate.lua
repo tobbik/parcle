@@ -303,12 +303,12 @@ local compile = function(self)
 	}
 	-- the mutable part of the template that holds the values
 	local t = {}
-	-- prepare the compiled chunk (render function)
+	-- prepare the compiled chunk (render function) and set into environment
 	local chunk = (v52) and
 		assert( loadin(t, table.concat(compile_chunk(self)) ))
 		or
-		assert( loadstring(table.concat(compile_chunk(self)) ))
-	setmetatable(t, {
+		setfenv(assert( loadstring(table.concat(compile_chunk(self)) )), t)
+	return setmetatable(t, {
 		__tostring = chunk,
 		-- does flushing it really makes sense?
 		__call     = function(self)
@@ -318,6 +318,8 @@ local compile = function(self)
 				end
 			end
 		end,
+		-- access functions from the funcs table, user (template) variables from
+		-- the self instance
 		__index    = function(self,k)
 			if 'nil' ~= type(funcs[k]) then
 				return rawget( funcs, k )
@@ -325,16 +327,16 @@ local compile = function(self)
 				return rawget( self, k )
 			end
 		end,
+		-- protect functions in the funcs table, don't allow identically named
+		-- vars in the instance table
 		__newindex = function(self, k, v)
 			if 'nil' ~= type(funcs[k]) then
-				error("<"..k.."> cannot be set on the table" )
+				error("<"..k.."> cannot be set on the template" )
 			else
 				rawset( self, k, v )
 			end
 		end
 	})
-	if not v52 then setfenv(chunk, t) end
-	return t
 end
 
 -- THE EXTRA's
@@ -381,12 +383,10 @@ return setmetatable({
 		elseif not s then
 			error('Parclate constructor must be called with an argument!')
 		end
-		local instance = parse(s)
-		setmetatable(instance, self)
 		self.__index    = self
 		self.__tostring = to_file
 		self.__call     = compile
-		return instance
+		return setmetatable(parse(s), self)
 	end
 })
 
