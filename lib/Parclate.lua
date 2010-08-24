@@ -342,13 +342,27 @@ end
 -- THE EXTRA's
 -- a pretty printer, helps to see errors in the table representation
 -- can be called by print(instance)
+local cmp=function(a,b)
+	if type(a)~=type(b) then
+		return tostring(a)>tostring(b)
+	else
+		return a<b
+	end
+end
 local print_r -- pre-define as local -> called recursively
 print_r = function( self, indent, done )
 	local cl     = {}
 	local done   = done or {}
 	local indent = indent or ''
-	local nextIndent -- Storage for next indentation value
+	local s_index= {}
 	for key, value in pairs (self) do
+		table.insert(s_index,key)
+	end
+	table.sort(s_index,cmp)
+	local nextIndent -- Storage for next indentation value
+	-- deal with the keys,args and commands first
+	for i,key in pairs (s_index) do
+		local value = self[key]
 		if type (value) == 'table' and not done [value] then
 			nextIndent = nextIndent or
 				(indent .. string.rep(' ',string.len(tostring (key))+2))

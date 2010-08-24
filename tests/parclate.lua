@@ -125,3 +125,30 @@ dst.links              = {
 	{name='Knowledge', username='Smart Cookie',    url='http://ajaxinan.com'}
 }
 print(dst)
+
+
+local arbitrar=[[
+<!DOCTYPE because it has an ! behind the angle bracket it's not a tag but plain text >
+<root arg1="foo" args:two="whatever" >
+	<elem tagtype="empty" />
+	<elem tagtype="non empty"></elem>
+	<!-- An XML comment starts with <! so it's not detected by the tag parser -->
+	<elem l:if="show_array">
+		<wrapper l:for="i,v in ipairs(list)">
+			<arg order="i"> Name: ${v}</arg>
+		</wrapper>
+	</elem>
+	<elem l:strip="true">
+		<listing l:if="has_elems(dictionary)" l:for="k,v in pairs(dictioanry)">
+			<pair> element: ${k} = ${v}</pair>
+		</listing>
+	</elem>
+</root>
+]]
+
+local atr  = Parclate(arbitrar)    -- generic tmpl representation from xml string
+local atc  = atr:compile()         -- compiled template from generic representation
+
+print (atr:serialize())
+print (atr:debug())
+
