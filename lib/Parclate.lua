@@ -6,15 +6,15 @@ local pairs, setmetatable, tostring, type , unpack =
       pairs, setmetatable, tostring, type , unpack
 
 -- determine version
--- We use that to determine if "setfenv" or "in env do"
+-- We use that to determine if "setfenv" or "_ENV" must be used
 local v52 = (_VERSION=='Lua 5.2') and true or false
 
 --[[_   __ _ _ __ ___  ___
 | '_ \ / _` | '__/ __|/ _ \
 | |_) | (_| | |  \__ \  __/
 | .__/ \__,_|_|  |___/\___|
-|_|  --]]
--- helper to disect arguments of tags
+|_|                          --]]
+-- #private : helper to disect arguments of tags
 local parse_args = function ( s, tag, empty )
 	local args   = {}
 	local cmds   = {}
@@ -42,7 +42,7 @@ local parse_args = function ( s, tag, empty )
 	return tag_t
 end
 
--- Do the actual parsing aka. xml->table conversion
+-- #private : main loop for parsing the template string into the table conversion
 local parse = function ( s )
 	local stack = {}
 	local top   = {}
@@ -92,7 +92,7 @@ end
 / __|/ _ \ '__| |/ _` | | |_  / _ \
 \__ \  __/ |  | | (_| | | |/ /  __/
 |___/\___|_|  |_|\__,_|_|_/___\___| --]]
--- serializes the representation back into (x)html template
+-- #public : serializes the representation back into an (x)html template
 local serialize = function (self)
 	local cl = {}
 	local s_tag -- pre-define as local -> called recursively
@@ -136,12 +136,13 @@ local serialize = function (self)
 	return table.concat(cl,'')
 end
 
---[[         __ _ _
-| |_ ___    / _(_) | ___
-| __/ _ \  | |_| | |/ _ \
-| || (_) | |  _| | |  __/
- \__\___/  |_| |_|_|\___|--]]
--- #private: create lua function source code from the arguments
+--[[                       _ _
+  ___ ___  _ __ ___  _ __ (_) | ___
+ / __/ _ \| '_ ` _ \| '_ \| | |/ _ \
+| (_| (_) | | | | | | |_) | | |  __/
+ \___\___/|_| |_| |_| .__/|_|_|\___|
+                    |_|              --]]
+-- #private: helper to create lua function source code from the arguments
 local compile_command = function(cmd, c_buf)
 	for c,exp in pairs(cmd) do
 		if 'if' == c then
@@ -181,10 +182,10 @@ local compile_buffer = function(c_buf, buffer, f_args, cnt)
 	return cnt+1
 end
 
--- #private: renders just the chunk, that actully flushes the template
--- @return: table, that needs to be table.concat()
-local compile_chunk = function (r)
-	local c_buf  = {}    -- buffer that holds entire chunk
+-- #private : renders just the chunk, that actully flushes the template
+-- @return  : string that represents a function in lua syntax
+local compile_template = function (r)
+	local c_buf  = {}    -- buffer that holds entire template
 	local buffer = {}    -- buffer that holds last set of adjacent string
 	local f_args = {}    -- holds the string.format arguments for "buffer"
 	local chunk_cnt = 0  -- helps to determine initial length of buffer table
@@ -204,9 +205,9 @@ local compile_chunk = function (r)
 			if t.attrs then
 				chunk_cnt = compile_buffer(c_buf, buffer, f_args, chunk_cnt)
 				table.insert(c_buf, string.format(
-					"\tfor _at,_atv in pairs(%s) do\n" ..
-						"\t\tinsert(x, format([=[ %%s=\"%%s\"]=], _at, _atv))\n" ..
-					"\tend\n", t.attrs))
+					'\tfor _at,_atv in pairs(%s) do\n' ..
+						'\t\tinsert(x, format([=[ %%s="%%s"]=], _at, _atv))\n' ..
+					'\tend\n', t.attrs))
 				chunk_cnt = chunk_cnt+1
 			end
 			table.insert(buffer, t.empty and ' />' or '>')
@@ -256,45 +257,11 @@ local compile_chunk = function (r)
 		table.insert(c_buf,1,addy)
 	end
 	table.insert(c_buf,1,' local x={')
-	return c_buf
+	return table.concat(c_buf)
 end
 
--- #public: generate the string for a file which is a compiled template
-local to_file = function(self)
-	if v52 then
-		return string.format(
-[[local f={format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert,tostring=tostring}
-return setmetatable({}, {
- __tostring=function( _ENV) %s end,
- __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
- __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
-                       else                      return rawget(f,k) end end,
- __newindex=function(s,k,v) if 'nil'==type(f[k]) then rawset(s,k,v)
-       else error("<"..k.."> cannot be set on the table" ) end end})]],
-		table.concat(compile_chunk(self)) )
-	else
-		return string.format(
-[[local t,f={},{format=string.format,pairs=pairs,ipairs=ipairs,
- concat=table.concat,insert=table.insert,tostring=tostring}
-return setmetatable(t,{
- __tostring=setfenv(function() %s end,t),
- __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
- __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
-                       else                      return rawget(f,k) end end,
- __newindex=function(s,k,v) if 'nil'==type(f[k]) then rawset(s,k,v)
-       else error("<"..k.."> cannot be set on the table" ) end end})]],
-	table.concat(compile_chunk(self)) )
-	end
-end
-
---[[                       _ _
-  ___ ___  _ __ ___  _ __ (_) | ___
- / __/ _ \| '_ ` _ \| '_ \| | |/ _ \
-| (_| (_) | | | | | | |_) | | |  __/
- \___\___/|_| |_| |_| .__/|_|_|\___|
-                    |_|              --]]
--- #public: create a table that represents just the compiled template
+-- #public: create a table that represents just the compiled template ready to
+-- be filled with variables and rendered to a string
 local compile = function(self)
 	-- holds all the protected immutable functions of the template
 	local funcs = {
@@ -305,12 +272,12 @@ local compile = function(self)
 	local t = {}
 	-- prepare the compiled chunk (render function) and set into environment
 	local chunk = (v52) and
-		assert( loadin(t, table.concat(compile_chunk(self)) ))
+		assert( loadin(t, compile_template(self) ))
 		or
-		setfenv(assert( loadstring(table.concat(compile_chunk(self)) )), t)
+		setfenv(assert( loadstring( compile_template(self) )), t)
 	return setmetatable(t, {
 		__tostring = chunk,
-		-- does flushing it really makes sense?
+		-- does flushing thje variables really makes sense?
 		__call     = function(self)
 			for k,v in pairs(self) do
 				if not funcs[k] then
@@ -331,7 +298,7 @@ local compile = function(self)
 		-- vars in the instance table
 		__newindex = function(self, k, v)
 			if 'nil' ~= type(funcs[k]) then
-				error("<"..k.."> cannot be set on the template" )
+				error('<'..k..'> cannot be set on the template' )
 			else
 				rawset( self, k, v )
 			end
@@ -339,9 +306,47 @@ local compile = function(self)
 	})
 end
 
--- THE EXTRA's
--- a pretty printer, helps to see errors in the table representation
--- can be called by print(instance)
+--[[         __ _ _
+| |_ ___    / _(_) | ___
+| __/ _ \  | |_| | |/ _ \
+| || (_) | |  _| | |  __/
+ \__\___/  |_| |_|_|\___|  --]]
+-- #public: generate the string for a file which is a compiled template
+local to_file = function(self)
+	if v52 then
+		return string.format(
+[[local f={format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert,tostring=tostring}
+return setmetatable({}, {
+ __tostring=function( _ENV) %s end,
+ __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
+ __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+                       else                      return rawget(f,k) end end,
+ __newindex=function(s,k,v) if 'nil'==type(f[k]) then rawset(s,k,v)
+       else error('<'..k..'> cannot be set on the table' ) end end})]],
+		compile_template(self) )
+	else
+		return string.format(
+[[local t,f={},{format=string.format,pairs=pairs,ipairs=ipairs,
+ concat=table.concat,insert=table.insert,tostring=tostring}
+return setmetatable(t,{
+ __tostring=setfenv(function() %s end,t),
+ __call=function(s) for k,v in pairs(s) do if not f[k] then s[k]=nil end end end,
+ __index=function(s,k) if 'nil'==type(f[k]) then return rawget(s,k)
+                       else                      return rawget(f,k) end end,
+ __newindex=function(s,k,v) if 'nil'==type(f[k]) then rawset(s,k,v)
+       else error('<'..k..'> cannot be set on the table' ) end end})]],
+	compile_template(self) )
+	end
+end
+
+--[[ _      _
+  __| | ___| |__  _   _  __ _
+ / _` |/ _ \ '_ \| | | |/ _` |
+| (_| |  __/ |_) | |_| | (_| |
+ \__,_|\___|_.__/ \__,_|\__, |
+                        |___/  --]]
+-- #private : helper ti iterate over representation in a sane order
 local cmp=function(a,b)
 	if type(a)~=type(b) then
 		return tostring(a)>tostring(b)
@@ -349,39 +354,47 @@ local cmp=function(a,b)
 		return a<b
 	end
 end
+
+-- #public : a pretty printer, helps to see errors in the table representation
+-- can be called by print(instance)
 local print_r -- pre-define as local -> called recursively
 print_r = function( self, indent, done )
 	local cl     = {}
 	local done   = done or {}
 	local indent = indent or ''
 	local s_index= {}
-	for key, value in pairs (self) do
+	for key, value in pairs(self) do
 		table.insert(s_index,key)
 	end
 	table.sort(s_index,cmp)
 	local nextIndent -- Storage for next indentation value
 	-- deal with the keys,args and commands first
-	for i,key in pairs (s_index) do
+	for i,key in pairs(s_index) do
 		local value = self[key]
-		if type (value) == 'table' and not done [value] then
+		if 'table' == type (value) and not done [value] then
 			nextIndent = nextIndent or
 				(indent .. string.rep(' ',string.len(tostring (key))+2))
 				-- Shortcut conditional allocation
 			done [value] = true
-			table.insert(cl, indent .. "[" .. tostring (key) .. "] => {\n")
+			table.insert(cl, indent .. '[' .. tostring (key) .. '] => {\n')
 			table.insert(cl, print_r (value, nextIndent, done))
-			table.insert(cl, indent .. "}" .. '\n')
+			table.insert(cl, indent .. '}' .. '\n')
 		else
 			table.insert(cl,
-				indent .. "[" .. tostring (key) .. "] => '" .. tostring (value).."'\n"
+				indent .. '[' .. tostring (key) .. "] => '" .. tostring (value).."'\n"
 			)
 		end
 	end
 	return table.concat(cl, '')
 end
 
--- THE CLASS STUFF
--- setup constructor ...() and __tostring method
+--[[  _
+  ___| | __ _ ___ ___
+ / __| |/ _` / __/ __|
+| (__| | (_| \__ \__ \
+ \___|_|\__,_|___/___/  --]]
+
+-- setup constructor ...()
 return setmetatable({
 			serialize = serialize,
 			to_file   = to_file,
@@ -390,7 +403,7 @@ return setmetatable({
 		}, {
 	-- constructor
 	__call = function( self, s )
-		if type(s) ~= 'string' then
+		if 'string' ~= type(s) then
 			error('Parclates constructor expects a string argument.\n'..
 				'expected <string> but got <' .. type(s) ..'>'
 			)
